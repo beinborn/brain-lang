@@ -12,3 +12,16 @@
 
 #
 
+import spacy
+
+# I am using spacy tokenization here, because this is what seems to be used by Elmo
+def spacy_tokenize(text):
+    nlp = spacy.load('en_core_web_sm')
+    doc = nlp(text)
+    sentences = []
+    for sent in doc.sents:
+        sentences.append([tok.text for tok in sent])
+    return sentences
+
+
+
