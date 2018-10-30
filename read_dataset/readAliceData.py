@@ -1,7 +1,7 @@
 from os import listdir
 from .scan import ScanEvent
 
-# This function reads the Alice data that was published by John Brennan et al. 2016
+# This method reads the Alice data that was published by John Brennan et al. 2016
 # Paper: https://www.ncbi.nlm.nih.gov/pubmed/27208858
 # Data: https://drive.google.com/file/d/0By_8Ci8eoDI4Q3NwUEFPRExIeG8/view
 # Stimuli: https://drive.google.com/file/d/0By_8Ci8eoDI4d2I4bEF1VEZKZjA/view
@@ -27,7 +27,6 @@ def read_all(data_dir, roi_size):
 
     # All_events is a list of all scan events in the data. They can be sorted by subject_id, block, timestamp etc
     return all_events
-
 
 def read(data_dir, subject, roi_size):
     xmin = 0.0
