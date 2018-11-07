@@ -21,3 +21,25 @@ class SkMapper(BasicMapper):
 
   def train(self, inputs, targets):
     self.model.fit(inputs, targets)
+
+  def prepare_inputs(self, **kwargs):
+    blocks = kwargs['blocks']
+    timed_targets = kwargs['timed_targets']
+    timed_inputs =  kwargs['timed_inputs']
+    delay = kwargs['delay']
+
+    inputs = []
+    targets = []
+    for block in blocks:
+      # Get current block steps
+      steps = sorted(timed_targets[block].keys())
+      for step in steps:
+        if step+delay in timed_inputs[block]:
+          inputs.append[timed_inputs[block][step+delay]]
+          targets.append(timed_targets[block][step])
+
+
+    return inputs, targets
+
+
+

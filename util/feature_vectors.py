@@ -11,7 +11,6 @@ def intersection(list_of_lists):
 
   return intersection_list
 
-
 class FeatureSelector(object):
   def __init__(self, feature_selector=VarianceThreshold(threshold=0.0)):
     """

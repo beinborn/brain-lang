@@ -8,4 +8,7 @@ class BasicMapper(object):
   def map(self, inputs, targets):
     raise NotImplementedError
 
+  def prepare_inputs(self, **kwargs):
+    raise NotImplementedError()
+
 
