@@ -4,7 +4,7 @@ from .scan import ScanEvent
 from read_dataset.brain_data_reader import BrainDataReader
 
 
-# This function reads the Harry Potter data that was published by Wehbe et al. 2014
+# This method reads the Harry Potter data that was published by Wehbe et al. 2014
 # Paper: http://aclweb.org/anthology/D/D14/D14-1030.pdf
 # Data: http://www.cs.cmu.edu/afs/cs/project/theo-73/www/plosone/
 

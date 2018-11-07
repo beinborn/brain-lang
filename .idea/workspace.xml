@@ -14,11 +14,43 @@
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file leaf-file-name="ExplainBrain.py" pinned="false" current-in-tab="true">
+      <file leaf-file-name="tokenize.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/language_preprocessing/tokenize.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="-82">
+              <caret line="22" column="8" lean-forward="false" selection-start-line="22" selection-start-column="8" selection-end-line="22" selection-end-column="8" />
+              <folding>
+                <element signature="e#665#674#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="ExplainBrain.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/ExplainBrain.py">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="175">
-              <caret line="26" column="4" lean-forward="false" selection-start-line="26" selection-start-column="4" selection-end-line="26" selection-end-column="4" />
+              <caret line="26" column="0" lean-forward="false" selection-start-line="26" selection-start-column="0" selection-end-line="26" selection-end-column="0" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="load_representations.py" pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/computational_model/load_representations.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="285">
+              <caret line="19" column="0" lean-forward="true" selection-start-line="19" selection-start-column="0" selection-end-line="19" selection-end-column="0" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="text_encoder.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/computational_model/text_encoder.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="0">
+              <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
               <folding />
             </state>
           </provider>
@@ -37,8 +69,8 @@
       <file leaf-file-name="readHarryPotterData.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/read_dataset/readHarryPotterData.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="105">
-              <caret line="17" column="23" lean-forward="false" selection-start-line="17" selection-start-column="6" selection-end-line="17" selection-end-column="23" />
+            <state relative-caret-position="178">
+              <caret line="86" column="20" lean-forward="false" selection-start-line="86" selection-start-column="20" selection-end-line="86" selection-end-column="20" />
               <folding>
                 <element signature="e#0#18#0" expanded="true" />
               </folding>
@@ -76,43 +108,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="metrics.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/evaluation/metrics.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="53">
-              <caret line="22" column="44" lean-forward="false" selection-start-line="22" selection-start-column="44" selection-end-line="22" selection-end-column="44" />
-              <folding>
-                <element signature="e#0#52#0" expanded="true" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="feature_vectors.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/util/feature_vectors.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="488">
-              <caret line="33" column="0" lean-forward="false" selection-start-line="33" selection-start-column="0" selection-end-line="33" selection-end-column="0" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
       <file leaf-file-name="classification_utils.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/util/classification_utils.py">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="233">
               <caret line="54" column="87" lean-forward="false" selection-start-line="54" selection-start-column="87" selection-end-line="54" selection-end-column="87" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="plotting.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/util/plotting.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="0">
-              <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
               <folding />
             </state>
           </provider>
@@ -127,12 +127,16 @@
       </list>
     </option>
   </component>
+  <component name="FindInProjectRecents">
+    <findStrings>
+      <find>&gt;&gt;&gt;</find>
+    </findStrings>
+  </component>
   <component name="IdeDocumentHistory">
     <option name="CHANGED_PATHS">
       <list>
         <option value="$PROJECT_DIR$/language_preprocessing/__init__.py" />
         <option value="$PROJECT_DIR$/language_preprocessing/test_tokenize.py" />
-        <option value="$PROJECT_DIR$/language_preprocessing/tokenize.py" />
         <option value="$PROJECT_DIR$/computationalModel/embeddings.py" />
         <option value="$PROJECT_DIR$/mapping_models/BasicMapper.py" />
         <option value="$PROJECT_DIR$/mapping_models/SkMapper.py" />
@@ -145,6 +149,7 @@
         <option value="$PROJECT_DIR$/read_dataset/harrypotter_util.py" />
         <option value="$PROJECT_DIR$/read_dataset/readHarryPotterData.py" />
         <option value="$PROJECT_DIR$/ExplainBrain.py" />
+        <option value="$PROJECT_DIR$/language_preprocessing/tokenize.py" />
       </list>
     </option>
   </component>
@@ -187,7 +192,13 @@
             <path>
               <item name="brain-lang" type="b2602c69:ProjectViewProjectNode" />
               <item name="brain-lang" type="462c0819:PsiDirectoryNode" />
-              <item name="computationalModel" type="462c0819:PsiDirectoryNode" />
+              <item name="computational_model" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="brain-lang" type="b2602c69:ProjectViewProjectNode" />
+              <item name="brain-lang" type="462c0819:PsiDirectoryNode" />
+              <item name="computational_model" type="462c0819:PsiDirectoryNode" />
+              <item name="text_encoder.py" type="8704e2dd:PyFileNode" />
             </path>
             <path>
               <item name="brain-lang" type="b2602c69:ProjectViewProjectNode" />
@@ -233,6 +244,7 @@
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/computational_model" />
       <recent name="$PROJECT_DIR$/computationalModel" />
       <recent name="$PROJECT_DIR$/evaluation" />
       <recent name="$PROJECT_DIR$/read_dataset" />
@@ -333,7 +345,9 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
           <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
+          <folding>
+            <element signature="e#665#674#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
@@ -405,14 +419,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
           <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/language_preprocessing/tokenize.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="253">
-          <caret line="26" column="0" lean-forward="false" selection-start-line="26" selection-start-column="0" selection-end-line="26" selection-end-column="0" />
           <folding />
         </state>
       </provider>
@@ -543,20 +549,46 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/ExplainBrain.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="175">
+          <caret line="26" column="0" lean-forward="false" selection-start-line="26" selection-start-column="0" selection-end-line="26" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/language_preprocessing/tokenize.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="-82">
+          <caret line="22" column="8" lean-forward="false" selection-start-line="22" selection-start-column="8" selection-end-line="22" selection-end-column="8" />
+          <folding>
+            <element signature="e#665#674#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/read_dataset/readHarryPotterData.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="105">
-          <caret line="17" column="23" lean-forward="false" selection-start-line="17" selection-start-column="6" selection-end-line="17" selection-end-column="23" />
+        <state relative-caret-position="178">
+          <caret line="86" column="20" lean-forward="false" selection-start-line="86" selection-start-column="20" selection-end-line="86" selection-end-column="20" />
           <folding>
             <element signature="e#0#18#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/ExplainBrain.py">
+    <entry file="file://$PROJECT_DIR$/computational_model/text_encoder.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="175">
-          <caret line="26" column="4" lean-forward="false" selection-start-line="26" selection-start-column="4" selection-end-line="26" selection-end-column="4" />
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/computational_model/load_representations.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="285">
+          <caret line="19" column="0" lean-forward="true" selection-start-line="19" selection-start-column="0" selection-end-line="19" selection-end-column="0" />
           <folding />
         </state>
       </provider>

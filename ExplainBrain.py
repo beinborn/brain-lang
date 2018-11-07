@@ -24,7 +24,7 @@ class ExplainBrain(object):
     {'mean_EV': mean_explain_variance}
 
   def eval(self, predictions, targets):
-    
+
   def explain(self, train=True, delay=0):
     blocks, time_steps, stimuli, brain_activations = self.load_brain_experiment()
     encoded_stimuli = self.encode_stimuli(stimuli)
