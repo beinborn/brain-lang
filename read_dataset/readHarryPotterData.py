@@ -1,6 +1,8 @@
 import numpy as np
 import scipy.io
 from .scan import ScanEvent
+from read_dataset.brain_data_reader import BrainDataReader
+
 
 # This function reads the Harry Potter data that was published by Wehbe et al. 2014
 # Paper: http://aclweb.org/anthology/D/D14/D14-1030.pdf
@@ -13,27 +15,27 @@ from .scan import ScanEvent
 # The chapter was presented in four blocks of app. 12 minutes.
 # Voxel size: 3 x 3 x 3
 
-def read_all(data_dir):
+class HarryPotterReader(BrainDataReader):
+  def read_all_events(self):
 
     # Collect scan events
     events = []
     for subject_id in range(1, 9):
-        for block_id in range(1, 5):
-            events.extend(read_block(data_dir, subject_id, block_id))
+      for block_id in range(1, 5):
+        events.extend(self.read_block(subject_id, block_id))
 
     # add voxel to region mapping
     for subject in {event.subject_id for event in events}:
-        mapping = get_voxel_to_region_mapping(data_dir, subject)
-        subject_events = [e for e in events if e.subject_id == subject]
-        for event in subject_events:
-            event.voxel_to_region_mapping = mapping
+      mapping = get_voxel_to_region_mapping(subject)
+      subject_events = [e for e in events if e.subject_id == subject]
+      for event in subject_events:
+        event.voxel_to_region_mapping = mapping
 
     return events
 
-
-def read_block(data_dir, subject_id, block_id):
+  def read_block(self, subject_id, block_id):
     # Data is in matlab format
-    datafile = scipy.io.loadmat(data_dir + "subject_" + str(subject_id) + ".mat")
+    datafile = scipy.io.loadmat(self.data_dir + "subject_" + str(subject_id) + ".mat")
 
     # Data structure is a dictionary with keys data, time, words, meta
     # Shapes for subject 1, block 1: data (1351,37913), time (1351,2) words (1, 5176)
@@ -48,9 +50,9 @@ def read_block(data_dir, subject_id, block_id):
     timed_words = []
 
     for i in np.arange(presented_words.shape[1]):
-        token = presented_words[0][i][0][0][0][0]
-        timestamp = presented_words[0][i][1][0][0]
-        timed_words.append([timestamp, token])
+      token = presented_words[0][i][0][0][0][0]
+      timestamp = presented_words[0][i][1][0][0]
+      timed_words.append([timestamp, token])
 
     # --- PROCESS FMRI SCANS --- #
     # We have one scan every 2 seconds
@@ -78,79 +80,68 @@ def read_block(data_dir, subject_id, block_id):
     start = np.where(scan_times == block_starts)[0][0]
 
     for j in range(start, len(scan_times)):
-        event = ScanEvent()
-        scan_time = scan_times[j]
-        word_sequence = ""
+      event = ScanEvent()
+      scan_time = scan_times[j]
+      word_sequence = ""
 
-        if scan_time > block_ends:
-            # reached end of block
-            return events
+      if scan_time > block_ends:
+        # reached end of block
+        return events
 
-        # Collect the words that have been represented during the previous and the current scan.
-        while (word_time < scan_time) and (word_index + 1 < len(timed_words)):
-            # Words are currently stored exactly as presented, preprocessing can be done later
+      # Collect the words that have been represented during the previous and the current scan.
+      while (word_time < scan_time) and (word_index + 1 < len(timed_words)):
+        # Words are currently stored exactly as presented, preprocessing can be done later
+        if len(word) > 0:
+          # Keep track of sentence boundaries and store sentences seen so far.
+          if is_beginning_of_new_sentence(seen_text.strip(), word):
+            sentences.append(seen_text)
+            seen_text = word.strip() + " "
+
+          # Simply add word to the current sentence
+          else:
             if len(word) > 0:
-                # Keep track of sentence boundaries and store sentences seen so far.
-                if is_beginning_of_new_sentence(seen_text.strip(), word):
-                    sentences.append(seen_text)
-                    seen_text = word.strip() + " "
+              seen_text = seen_text + word.strip() + " "
+          word_sequence += word + " "
 
-                # Simply add word to the current sentence
-                else:
-                    if len(word) > 0:
-                        seen_text = seen_text + word.strip() + " "
-                word_sequence += word + " "
+        # Get next word
+        word_index += 1
+        word_time, word = timed_words[word_index]
 
-            # Get next word
-            word_index += 1
-            word_time, word = timed_words[word_index]
+        # TODO: We have not yet decided how to deal with the end of paragraph symbol ("+").
+        # Leila did not answer when I asked whether participants had actually seen the +.
 
-            # TODO: We have not yet decided how to deal with the end of paragraph symbol ("+").
-            # Leila did not answer when I asked whether participants had actually seen the +.
+      # reached next scan, add collected data to events
+      event.subject_id = str(subject_id)
+      event.block = block_id
+      event.timestamp = scan_time
+      event.scan = noisy_scans[j]
 
-        # reached next scan, add collected data to events
-        event.subject_id = str(subject_id)
-        event.block = block_id
-        event.timestamp = scan_time
-        event.scan = noisy_scans[j]
+      event.stimulus = word_sequence.strip()
+      event.sentences = list(sentences)
+      event.current_sentence = seen_text
 
-        event.stimulus = word_sequence.strip()
-        event.sentences = list(sentences)
-        event.current_sentence = seen_text
-
-        events.append(event)
+      events.append(event)
 
     return events
 
-# This is a quite naive sentence boundary detection that only works for this dataset.
-def is_beginning_of_new_sentence(seentext, newword):
-    sentence_punctuation = (".", "?", "!", ".\"", "!\"", "?\"", "+", "…\"")
-    # I am ignoring the following exceptions, because they are unlikely to occur in fiction text: "etc.", "e.g.", "cf.", "c.f.", "eg.", "al.
-    exceptions = ("Mr.", "Mrs. ")
-    # This would not work if everything is lowercased!
-    if (seentext.endswith(sentence_punctuation)) and not seentext.endswith(exceptions) and not newword.islower():
-        return True
-    else:
-        return False
-
-
-# The metadata provides very rich information.
-# Double-check description.txt in the original data.
-# Important: Each voxel in the scan has different coordinates depending on the subject!
-# Voxel 5 has the same coordinates in all scans for subject 1.
-# Voxel 5 has the same coordinates in all scans for subject 2, but they differ from the coordinates for subject 1.
-# Same with regions: Each region spans a different set of voxels depending on the subject!
-def get_voxel_to_region_mapping(data_dir, subject_id):
-    metadata = scipy.io.loadmat(data_dir + "subject_" + str(subject_id) + ".mat")["meta"]
+  # The metadata provides very rich information.
+  # Double-check description.txt in the original data.
+  # Important: Each voxel in the scan has different coordinates depending on the subject!
+  # Voxel 5 has the same coordinates in all scans for subject 1.
+  # Voxel 5 has the same coordinates in all scans for subject 2, but they differ from the coordinates for subject 1.
+  # Same with regions: Each region spans a different set of voxels depending on the subject!
+  def get_voxel_to_region_mapping(self, subject_id):
+    metadata = scipy.io.loadmat(self.data_dir + "subject_" + str(subject_id) + ".mat")["meta"]
     roi_of_nth_voxel = metadata[0][0][8][0]
     roi_names = metadata[0][0][10][0]
     voxel_to_region = {}
     for voxel in range(0, roi_of_nth_voxel.shape[0]):
-        roi = roi_of_nth_voxel[voxel]
-        voxel_to_region[voxel] = roi_names[roi][0]
+      roi = roi_of_nth_voxel[voxel]
+      voxel_to_region[voxel] = roi_names[roi][0]
     # for name in roi_names:
     #  print(name[0])
     return voxel_to_region
+
 
 
 # --------
@@ -218,4 +209,3 @@ def get_voxel_to_region_mapping(data_dir, subject_id):
 # low_pass, high_pass: Respectively low and high cutoff frequencies, in Hertz.
 # Low-pass filtering improves specificity.
 # High-pass filtering should be kept small, to keep some sensitivity.
-
