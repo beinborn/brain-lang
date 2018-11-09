@@ -1,4 +1,5 @@
 import tensorflow as tf
+import tensorflow_hub as hub
 
 
 class TextEncoder(object):
@@ -11,7 +12,8 @@ class TextEncoder(object):
   def get_embeddings_values(self, text_sequences, key='elmo'):
     with tf.Session() as sess:
       tf.global_variables_initializer()
-      sess.run(self.get_embeddings(text_sequences, key))
+      embeddings = sess.run(self.get_embeddings(text_sequences, key))
+    return embeddings
 
   def save_embeddings(self, text):
     raise NotImplementedError()
@@ -25,7 +27,7 @@ class TfHubElmoEncoder(TextEncoder):
    """
   def __init__(self, hparams, trainable=False):
     super(TfHubElmoEncoder, self).__init__(hparams)
-    self.embedder = tf.hub.Module('https://tfhub.dev/google/elmo/2', trainable=trainable)
+    self.embedder = hub.Module('https://tfhub.dev/google/elmo/2', trainable=trainable)
 
   def get_embeddings(self, text_sequences, key='elmo'):
     embeddings = self.embedder(
@@ -36,7 +38,7 @@ class TfHubElmoEncoder(TextEncoder):
     return embeddings
 
   def get_text_embedding_column(key='elmo'):
-    return tf.hub.text_embedding_column(
+    return hub.text_embedding_column(
       key="sentence",
       module_spec="https://tfhub.dev/google/elmo/2")
 
@@ -46,7 +48,7 @@ class TfHubUniversalEncoder(TextEncoder):
   """
   def __init__(self, hparams, trainable=False):
     super(TfHubUniversalEncoder, self).__init__(hparams)
-    self.embedder = tf.hub.Module('https://tfhub.dev/google/universal-sentence-encoder/2', trainable=trainable)
+    self.embedder = hub.Module('https://tfhub.dev/google/universal-sentence-encoder/2', trainable=trainable)
 
   def get_embeddings(self, text_sequences, key='elmo'):
     embeddings = self.embedder(
@@ -58,7 +60,7 @@ class TfHubUniversalEncoder(TextEncoder):
 
 
   def get_text_embedding_column(key='sentence'):
-    return tf.hub.text_embedding_column(
+    return hub.text_embedding_column(
       key="sentence",
       module_spec="https://tfhub.dev/google/universal-sentence-encoder/2")
 

@@ -21,9 +21,10 @@ def mean_explain_variance(predictions, targets):
   return explained_variance_score(targets, predictions, multioutput='uniform_average')
 
 def cosine_similarity(predictions, targets):
-
+  raise NotImplementedError()
 
 def binary_accuracy(predictions, targets):
+  raise NotImplementedError()
 
 def binary_accuracy_from_dists(cosine_dists, euclidean_dists):
   nn_index = np.argmin(cosine_dists, axis=1)

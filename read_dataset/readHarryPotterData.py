@@ -2,7 +2,7 @@ import numpy as np
 import scipy.io
 from .scan import ScanEvent
 from read_dataset.brain_data_reader import BrainDataReader
-
+from read_dataset.harrypotter_util import  is_beginning_of_new_sentence
 
 # This method reads the Harry Potter data that was published by Wehbe et al. 2014
 # Paper: http://aclweb.org/anthology/D/D14/D14-1030.pdf
@@ -16,17 +16,22 @@ from read_dataset.brain_data_reader import BrainDataReader
 # Voxel size: 3 x 3 x 3
 
 class HarryPotterReader(BrainDataReader):
-  def read_all_events(self):
 
+  def __init__(self, data_dir):
+    super(HarryPotterReader, self).__init__(data_dir)
+
+  def read_all_events(self, subject_ids=None):
     # Collect scan events
     events = []
-    for subject_id in range(1, 9):
-      for block_id in range(1, 5):
+    if subject_ids is None:
+      subject_ids = np.arange(1,9)
+    for subject_id in subject_ids:
+      for block_id in np.arange(1, 5):
         events.extend(self.read_block(subject_id, block_id))
 
     # add voxel to region mapping
     for subject in {event.subject_id for event in events}:
-      mapping = get_voxel_to_region_mapping(subject)
+      mapping = self.get_voxel_to_region_mapping(subject)
       subject_events = [e for e in events if e.subject_id == subject]
       for event in subject_events:
         event.voxel_to_region_mapping = mapping

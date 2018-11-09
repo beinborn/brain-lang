@@ -1,9 +1,9 @@
-import sklearn as sk
+from sklearn.linear_model import *
 from mapping_models.BasicMapper import BasicMapper
 
 class SkMapper(BasicMapper):
-  def __init__(self, hparams, model_fn=sk.linear_model.Ridge):
-    super(SkMapper, self).init(hparams)
+  def __init__(self, hparams, model_fn=Ridge):
+    super(SkMapper, self).__init__(hparams)
     self.alpha = hparams.alpha
     self.model_fn = model_fn
   def build(self, is_train=True):
