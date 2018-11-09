@@ -1,4 +1,5 @@
 import nilearn.signal
+from scipy import stats
 
 def clean(data):
     # check data format
@@ -8,7 +9,8 @@ def clean(data):
                          high_pass=0.005, t_r=2.0, ensure_finite=False)
 
 
+# Double-check this
+def zscore(data):
+    return stats.zscore(data)
 
-def standardize(data):
-    # TODO standardize data to have mean 0
-    return data
+# TODO: normalize scans by resting state scans

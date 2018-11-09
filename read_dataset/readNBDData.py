@@ -40,7 +40,7 @@ def read_run(data_dir, subject, narrative_id, stimuli):
     # We use vswrs files, the letters correspond to preprocessing
     # “v” = motion correction, “s" = smoothing, “w" = normalisation, “r" = realign
     fmri_data = [file for file in listdir(current_dir) if
-                 (file.endswith('.nii') and file.startswith('vswrs'))]
+                 (file.endswith('.nii') and file.startswith('coreg_vswrs'))]
 
     # Each file corresponds to one scan taken every 0.88 seconds
     scan_time = 0.0

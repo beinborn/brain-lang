@@ -2,6 +2,7 @@ import numpy as np
 import scipy.io
 from .scan import ScanEvent
 
+
 # This method reads the Harry Potter data that was published by Wehbe et al. 2014
 # Paper: http://aclweb.org/anthology/D/D14/D14-1030.pdf
 # Data: http://www.cs.cmu.edu/afs/cs/project/theo-73/www/plosone/
@@ -14,7 +15,6 @@ from .scan import ScanEvent
 # Voxel size: 3 x 3 x 3
 
 def read_all(data_dir):
-
     # Collect scan events
     events = []
     for subject_id in range(1, 9):
@@ -42,16 +42,6 @@ def read_block(data_dir, subject_id, block_id):
     timedata = datafile["time"]
     presented_words = datafile["words"]
 
-    # --- PROCESS TEXT STIMULI -- #
-    # Here we extract the presented words and align them with their timestamps.
-    # The original data consists of weirdly nested arrays.
-    timed_words = []
-
-    for i in np.arange(presented_words.shape[1]):
-        token = presented_words[0][i][0][0][0][0]
-        timestamp = presented_words[0][i][1][0][0]
-        timed_words.append([timestamp, token])
-
     # --- PROCESS FMRI SCANS --- #
     # We have one scan every 2 seconds
     scan_times = timedata[:, 0]
@@ -62,6 +52,16 @@ def read_block(data_dir, subject_id, block_id):
     # find first and last scan time of current block
     block_starts = np.min(scan_times[np.where(blocks == block_id)])
     block_ends = np.max(scan_times[np.where(blocks == block_id)]) + 2
+    # --- PROCESS TEXT STIMULI -- #
+    # Here we extract the presented words and align them with their timestamps.
+    # The original data consists of weirdly nested arrays.
+    timed_words = []
+
+    for i in np.arange(presented_words.shape[1]):
+        token = presented_words[0][i][0][0][0][0]
+        timestamp = presented_words[0][i][1][0][0]
+        if timestamp >= block_starts:
+            timed_words.append([timestamp, token])
 
     # Initialize variables
     # stimulus = words presented between current and previous scan
@@ -69,8 +69,9 @@ def read_block(data_dir, subject_id, block_id):
     # Details about the preprocessing can be found in the Appendix of Wehbe et al.
     # We save everything in arrays because the data is already ordered.
     word_index = 0
-    word_time = timed_words[0][0]
-    word = timed_words[0][1]
+
+    word_time = timed_words[word_index][0]
+    word = timed_words[word_index][1]
 
     events = []
     sentences = []
@@ -78,12 +79,14 @@ def read_block(data_dir, subject_id, block_id):
     start = np.where(scan_times == block_starts)[0][0]
 
     for j in range(start, len(scan_times)):
+
         event = ScanEvent()
         scan_time = scan_times[j]
-        word_sequence = ""
 
+        word_sequence = ""
         if scan_time > block_ends:
-            # reached end of block
+            # End of block, add last sentence to sentences
+            events[-1].sentences.append(seen_text.strip())
             return events
 
         # Collect the words that have been represented during the previous and the current scan.
@@ -119,16 +122,22 @@ def read_block(data_dir, subject_id, block_id):
         event.current_sentence = seen_text
 
         events.append(event)
+     # Add the last sentence to the sentences of the last event.
 
+    events[-1].sentences.append(seen_text.strip())
     return events
+
 
 # This is a quite naive sentence boundary detection that only works for this dataset.
 def is_beginning_of_new_sentence(seentext, newword):
-    sentence_punctuation = (".", "?", "!", ".\"", "!\"", "?\"", "+", "…\"")
+    sentence_punctuation = (".", "?", "!", ".\"", "!\"", "?\"", "+")
     # I am ignoring the following exceptions, because they are unlikely to occur in fiction text: "etc.", "e.g.", "cf.", "c.f.", "eg.", "al.
-    exceptions = ("Mr.", "Mrs. ")
-    # This would not work if everything is lowercased!
-    if (seentext.endswith(sentence_punctuation)) and not seentext.endswith(exceptions) and not newword.islower():
+    exceptions = ("Mr.", "Mrs.")
+    if (seentext.endswith(exceptions)):
+        return False
+# This would not work if everything is lowercased!
+
+    if (seentext.endswith(sentence_punctuation) and not newword.islower() and newword is not (".")):
         return True
     else:
         return False
@@ -151,7 +160,6 @@ def get_voxel_to_region_mapping(data_dir, subject_id):
     # for name in roi_names:
     #  print(name[0])
     return voxel_to_region
-
 
 # --------
 # These are some lines for processing the metadata which are not needed here, but I leave them in for reference.
@@ -218,4 +226,3 @@ def get_voxel_to_region_mapping(data_dir, subject_id):
 # low_pass, high_pass: Respectively low and high cutoff frequencies, in Hertz.
 # Low-pass filtering improves specificity.
 # High-pass filtering should be kept small, to keep some sensitivity.
-
