@@ -4,7 +4,7 @@ from sklearn.metrics import explained_variance_score
 import numpy as np
 import itertools
 
-def mean_squared_error(predictions, targets):
+def mse(predictions, targets):
   """
 
   :param predictions: (n_samples, n_outputs)

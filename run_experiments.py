@@ -11,6 +11,7 @@ import tensorflow as tf
 FLAGS = tf.flags.FLAGS
 
 tf.flags.DEFINE_float('alpha', 0, 'alpha')
+tf.flags.DEFINE_string('embedding_dir', None, 'path to the file containing the embeddings')
 
 hparams = FLAGS
 if __name__ == '__main__':
