@@ -1,6 +1,10 @@
 import numpy as np
 import scipy.io
+<<<<<<< HEAD
 from .scan_elements import ScanEvent
+=======
+from .scan import ScanEvent
+>>>>>>> 82d8d29cd9c9f7be5c2a8ff762f465c19ff5b001
 
 
 # This method reads the Harry Potter data that was published by Wehbe et al. 2014
