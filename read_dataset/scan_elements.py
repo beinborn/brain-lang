@@ -27,8 +27,8 @@ class ScanEvent2:
 
     subject_id = ""
 
-    # Stimulus is a tuple (sentence_id, token_id)
-    stimulus = []
+    # Stimulus is a list of tuples (sentence_id, token_id)
+    stimulus = [(0,0)]
 
     timestamp = 0.0
 
