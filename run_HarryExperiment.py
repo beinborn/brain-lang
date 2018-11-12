@@ -3,6 +3,7 @@ from read_dataset import readHarryPotterData
 from computational_model import combine_representations, mapping, load_representations
 from language_preprocessing import tokenize
 from evaluation import evaluate
+from voxel_preprocessing import preprocess_voxels as pv
 import spacy
 import numpy as np
 import pickle
@@ -39,7 +40,8 @@ block1_scans = [event.scan for event in block1]
 block2_scans = [event.scan for event in block2]
 block3_scans = [event.scan for event in block3]
 block4_scans = [event.scan for event in block4]
-scans = [block1_scans, block2_scans, block3_scans, block4_scans]
+
+
 
 # Embedding takes long, so we save an interim format to save time in debugging
 # embeddings = [load_representations.elmo_embed(sents) for sents in sentences]
@@ -73,10 +75,16 @@ print("Add delay to embeddings for test: " + str(len(test_scans)) + " scans and 
     len(test_embeddings)) + " embeddings. ")
 test_scans, test_embeddings = combine_representations.add_delay(delay, test_scans, test_embeddings)
 
+# Preprocess scans
+# TODO: THink about this! In which order? Shouldn"t we apply selection over both
+
+train_scans = pv.zscore(pv.select(pv.clean(np.array(train_scans))))
+test_scans = pv.zscore(pv.select(pv.clean((np.array(test_scans)))))
+
+
 #  learn mapping from embeddings to activations
-print("Training a mapping model for: embeddings " + str(np.array(train_embeddings).shape) + " and scans " + str(
-    np.array(train_scans).shape))
-mapping_model = mapping.learn_mapping(np.array(train_embeddings), np.array(train_scans))
+print("Training a mapping model for: embeddings " + str(np.array(train_embeddings).shape) + " and scans " + str(train_scans.shape))
+mapping_model = mapping.learn_mapping(np.array(train_embeddings), train_scans)
 
 #  apply mapping on test data
 predicted_scans = mapping.predict(mapping_model, np.array(test_embeddings))

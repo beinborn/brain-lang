@@ -1,7 +1,7 @@
 from os import listdir
 import nibabel as nib
 import numpy as np
-from .scan import ScanEvent
+from .scan_elements import ScanEvent
 
 # This method reads the Narrative Brain Dataset that was published by Lopopolo et al 2018.
 # Paper: http://lrec-conf.org/workshops/lrec2018/W9/pdf/1_W9.pdf

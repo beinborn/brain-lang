@@ -1,7 +1,7 @@
 import h5py
 import numpy as np
 from openpyxl import load_workbook
-from read_dataset import scan
+from read_dataset import scan_elements
 #from pymvpa import mvpa2.mappers as mappers
 
 # This method reads the data that I received from Jonas Kaplan.
@@ -37,7 +37,7 @@ def read_all(data_dir, language = "english"):
     scan_events = []
     for subject in range(0, datamatrix.shape[0]):
         for i in range(0, datamatrix.shape[1]):
-            event = scan.ScanEvent()
+            event = scan_elements.ScanEvent()
 
             context = stories[i][0]
             text = stories[i][1]

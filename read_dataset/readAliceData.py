@@ -1,5 +1,5 @@
 from os import listdir
-from .scan import ScanEvent
+from .scan_elements import ScanEvent
 
 # This method reads the Alice data that was published by John Brennan et al. 2016
 # Paper: https://www.ncbi.nlm.nih.gov/pubmed/27208858

@@ -69,15 +69,12 @@ def get_stimulus_embeddings(sentences, sentence_embeddings, scans):
 
     return stimulus_embeddings
 
-    # Very naive approach to the delay, just move the embeddings two timesteps down and skip the last two scans
+    # Very naive approach to the delay.
+    # Just add random fixation embeddings to the beginning according to the number of timesteps n and skip the last n embeddings
     # TODO Discuss implementation of better methods with Samira!
 
 
 def add_delay(timesteps, scans, embeddings):
-    # Very naive implementation of the delay.
-    # I just add random fixation embeddings to the beginning according to the number of timesteps.
-    #  todo: dicusss
-
     np.random.seed(42)
     embedding_dim = len(max(embeddings, key=len))
     fixation_embedding = np.random.rand(embedding_dim, )
