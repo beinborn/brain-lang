@@ -65,7 +65,7 @@ def distance_based_accuracy(gold_scans, predictions, random_data, metric="cosine
 
 
 def voxelwise_explained_variance(gold_data, predictions, multioutput='uniform_average'):
-    return explained_variance_score(gold_data, predictions, multioutput)
+    return explained_variance_score(gold_data, predictions, None, multioutput)
 
 
 def mean_squared_error(gold_data, predictions, multioutput='uniform_average'):
