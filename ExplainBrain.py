@@ -21,9 +21,9 @@ class ExplainBrain(object):
     self.folds = None
     self.subject_id = 1
 
-    self.data_dir = "../bridge_data/processed/harrypotter/"+str(self.subject_id)+"_"
+    self.data_dir = "../processed/subject"+str(self.subject_id)+"_"
 
-  def load_brain_experiment(self, voxel_preprocessings=[], save=False, load=True):
+  def load_brain_experiment(self, voxel_preprocessings=[], save=True, load=False):
     """Load stimili and brain measurements.
 
     :return:
@@ -38,10 +38,12 @@ class ExplainBrain(object):
       blocks = brain_activations.keys()
     else:
       all_events = self.brain_data_reader.read_all_events(subject_ids=[self.subject_id])
+      print(all_events.keys())
       blocks, time_steps, brain_activations, stimuli_in_context = self.decompose_scan_events(all_events[self.subject_id])
 
     self.blocks = blocks
 
+    # Collect the scans with empty stimulus
     start_steps = {}
     end_steps = {}
     for block in self.blocks:
@@ -82,6 +84,7 @@ class ExplainBrain(object):
       brain_activations[block.block_id] = []
       timesteps[block.block_id] = []
 
+      # tqdm simply shows a progress bar
       for event in tqdm(block.scan_events):
         # Get the stimuli in context (what are we going to feed to the computational model!)
         context, stimuli_index = block.get_stimuli_in_context(
@@ -161,9 +164,8 @@ class ExplainBrain(object):
 
     return self.folds[fold_index]
 
-  def preprocess_brain_activations(self, brain_activations, voxel_preprocessings, start_steps, end_steps):
+  def preprocess_brain_activations(self, brain_activations, voxel_preprocessings):
     for block in brain_activations.keys():
-      start_step = []
       for voxel_preprocessing_fn, args in voxel_preprocessings:
         brain_activations[block] = voxel_preprocessing_fn(brain_activations[block], **args)
 
@@ -176,13 +178,13 @@ class ExplainBrain(object):
     tf.logging.info('Loading brain data ...')
     time_steps, brain_activations, stimuli, start_steps, end_steps = self.load_brain_experiment()
     tf.logging.info('Blocks: %s' %str(self.blocks))
-    print('Example Stimuli %s' % str(stimuli[1][0]))
+    print('Example Stimuli %s' % str(stimuli[1][25]))
 
     brain_activations = self.preprocess_brain_activations(brain_activations, voxel_preprocessings=self.voxel_preprocess())
 
     # Encode the stimuli and get the representations from the computational model.
     tf.logging.info('Encoding the stimuli ...')
-    encoded_stimuli = self.encode_stimuli(stimuli, start_steps, end_steps )
+    encoded_stimuli = self.encode_stimuli(stimuli)
 
     # Get the test and training sets
     train_blocks, test_blocks = self.get_folds(fold_index)

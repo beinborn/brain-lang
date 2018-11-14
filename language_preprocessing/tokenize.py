@@ -1,38 +1,38 @@
-# This method is horribly inefficient because the content of sentences is incremented over the scans and we tokenize it again and again!
-# Would probably be smarter to do this in the reader directly
+import spacy
+def stimuli_tokenizer(stimuli_sequence, stimuli_steps, tokenize_fn):
+  """
 
-# The tokenization code so far only works if the model is initialized as
-# model = spacy.load('en_core_web_sm')
-# Would probably have to refactor a lot if I want to change the tokenization
+  :param stimuli_sequence:
+  :param stimuli_steps:
+  :param tokenize_fn:
+  :return:
+    tokens, steps
+  """
+  tokens = []
+  steps = []
 
-def tokenize_all(scan_events, model):
-    tokenized_events = []
-    print("Tokenizing")
-    for event in scan_events:
-        print(event.subject_id, event.block, event.timestamp)
-        # Tokenize
-        sentences = tokenize_sentences(event.sentences, model)
-        current_sentence = tokenize_text(event.current_sentence, model)
-        stimulus = tokenize_text(event.stimulus, model)
+  for stimuli, step in  zip(stimuli_sequence, stimuli_steps):
+    tokenized_stimuli = tokenize_fn(stimuli)
+    for tok in tokenized_stimuli:
+      tokens.append(tok)
+      steps.append(step)
 
-        # Put tokenized version back (this could be done in one step, but it is more readable like this)
-        event.sentences = sentences
-        event.current_sentence = current_sentence
-        event.stimulus = stimulus
-        tokenized_events.append(event)
-
-    return tokenized_events
+  return tokens, steps
 
 
+class SpacyTokenizer(object):
+    def __init__(self):
+      self.nlp = spacy.load('en_core_web_sm')
 
+    def tokenize(self, text, sentence_mode=False):
+      if isinstance(text, list):
+        text = ' '.join(text)
 
-def tokenize_sentences(sentences, model):
-    tokenized_sents = []
-    for sentence in sentences:
-        tok_sent = model(sentence)
-        tokenized_sents.append([tok.text for tok in tok_sent])
-    return tokenized_sents
-
-
-def tokenize_text(text, model):
-    return [tok.text for tok in model(text)]
+      doc = self.nlp(text)
+      sentences = []
+      for sent in doc.sents:
+        if not sentence_mode:
+          sentences.extend([tok.text for tok in sent])
+        else:
+          sentences.append([tok.text for tok in sent])
+      return sentences

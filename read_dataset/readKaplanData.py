@@ -18,11 +18,11 @@ import spacy
 # Note: the data for subject 30 is empty for English! Don't know why.
 # Language should be english, chinese, or farsi
 
-class StoryReader(FmriReader):
+class StoryDataReader(FmriReader):
     def __init__(self, data_dir):
-        super(StoryReader, self).__init__(data_dir)
+        super(StoryDataReader, self).__init__(data_dir)
 
-    def read_all(self, subject_ids=None, **kwargs):
+    def read_all_events(self, subject_ids=None, **kwargs):
         self.language = kwargs.get("language", "english")
         datafile = self.data_dir + "/30_" + self.language + "_storydata_masked.hd5"
 
@@ -51,21 +51,20 @@ class StoryReader(FmriReader):
         for subject in subject_ids:
             blocks_for_subject = []
             for block_index in range(0, datamatrix.shape[1]):
-                block = Block()
-                block.subject_id = str(subject)
-                block.block_id = block_index
-                block.sentences = stories[block_index]
-                event = ScanEvent()
-                event.subject_id = str(subject)
-                event.scan = datamatrix[subject][block_index]
-                event.timestamp = block_index
-                # For this dataset, the brain activation has already been averaged over the whole story,
-                # so I keep the stimulus empty because it refers to the whole text in block.sentences
+
+                stimulus_pointer = []
+                for sentence_id in range(0,len(stories[block_index])):
+                    for word_id in range(0,len(stories[block_index][sentence_id])):
+                        stimulus_pointer.append((sentence_id,word_id))
+                # For this dataset, the brain activation has already been averaged over the whole story which consists of several sentences.
+                # What do I put in stimulus_pointer?
                 # I do not yet have a theory on whether it makes sense to include the context primer or not and where.
 
+                event = ScanEvent( str(subject),  stimulus_pointer, block_index, datamatrix[subject][block_index])
+                block = Block(str(subject), block_index, stories[block_index],[event])
                 block.scan_events = [event]
                 blocks_for_subject.append(block)
-            blocks[str(subject)] = blocks_for_subject
+            blocks[subject] = blocks_for_subject
         return blocks
 
 

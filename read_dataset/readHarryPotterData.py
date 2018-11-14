@@ -38,8 +38,7 @@ class HarryPotterReader(FmriReader):
 
 
     def read_block(self, subject_id, block_id):
-        # Initialize
-        block = Block(subject_id=subject_id, block_id=block_id)
+
 
         # Data is in matlab format
         # Data structure is a dictionary with keys data, time, words, meta
@@ -118,9 +117,9 @@ class HarryPotterReader(FmriReader):
 
             scan_events.append(scan_event)
 
-        block.scan_events = scan_events
-        block.sentences = sentences
-        #print(vars(block.scan_events[20]))
+        # Set block
+        block = Block(subject_id, block_id, sentences, scan_events)
+
         return block
 
     # The metadata provides very rich information.

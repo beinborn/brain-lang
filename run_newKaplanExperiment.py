@@ -2,7 +2,7 @@
 
 """
 from ExplainBrain import ExplainBrain
-from read_dataset2.readHarryPotterData import HarryPotterReader
+from read_dataset.readKaplanData import StoryDataReader
 from computational_model.text_encoder import TfHubElmoEncoder
 from mapping_models.sk_mapper import SkMapper
 import tensorflow as tf
@@ -19,8 +19,8 @@ if __name__ == '__main__':
   tf.logging.set_verbosity(tf.logging.INFO)
 
   # Define how we want to read the brain data
-  print("1. initialize brain data reader ...")
-  harry_reader = HarryPotterReader(data_dir="/Users/lisa/Corpora/HarryPotter/")
+  print("1. initialize brain data reader for Kaplan Data ...")
+  harry_reader = StoryDataReader(data_dir="/Users/lisa/Corpora/Kaplan_data")
 
   # Define how we want to computationaly represent the stimuli
   print("2. initialize text encoder ...")

@@ -46,7 +46,9 @@ class SkMapper(BasicMapper):
       # for all steps in the current block
       for step in time_steps[block]:
         if step+delay in time_steps[block]:
-          input_index = np.where(time_steps[block] == step+delay)[0]
+          input_index = np.where(time_steps[block] == step+delay)[0][0]
+          print(block)
+          print(input_index)
           if len(timed_inputs[block][input_index]) > 0:
             inputs.append(timed_inputs[block][input_index][0])
             targets.append(timed_targets[block][step])

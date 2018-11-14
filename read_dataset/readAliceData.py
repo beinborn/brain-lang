@@ -1,84 +1,121 @@
-import h5py
 import numpy as np
-from openpyxl import load_workbook
+import regex as re
+from os import listdir
 from .scan_elements import Block, ScanEvent
 from .FmriReader import FmriReader
 import spacy
-# from pymvpa import mvpa2.mappers as mappers
-
-# This method reads the data that I received from Jonas Kaplan.
-# It is described in Dehghani et al. 2017
-# Paper: https://onlinelibrary.wiley.com/doi/epdf/10.1002/hbm.23814
 
 
-# It consists of fMRI data from 90 subjects (30 from three different native languages each: English, Mandarin, Farsi)
-#  who read 40 short personal stories (145-155 words long).
-# The data is already preprocessed, see section "fMRI Data Preprocessing" in the paper.
-# Format: a matrix of 30 x 40 x 212018, which corresponds to subjects X stories X voxels.
-# Note: the data for subject 30 is empty for English! Don't know why.
-# Language should be english, chinese, or farsi
-
-class StoryReader(FmriReader):
+class AliceDataReader(FmriReader):
     def __init__(self, data_dir):
-        super(StoryReader, self).__init__(data_dir)
+        super(AliceDataReader, self).__init__(data_dir)
 
-    def read_all(self, subject_ids=None, **kwargs):
-        self.language = kwargs.get("language", "english")
-        datafile = self.data_dir + "/30_" + self.language + "_storydata_masked.hd5"
-
-        data = h5py.File(datafile, 'r')
-        datamatrix = np.array(data["__unnamed__"][()])
-        stimulifile = self.data_dir + '/StoryKey.xlsx'
-        stimuli = load_workbook(stimulifile).active
-        if subject_ids == None:
-            subject_ids = list(range(0, datamatrix.shape[0]))
-        # First collect all stories
-        stories = []
-        tok_model = spacy.load('en_core_web_sm')
-        for story_id in range(2, stimuli.max_row + 1):
-            # The first 7 columns contain irrelevant information
-            context = stimuli.cell(row=story_id, column=8).value.strip()
-            seg1 = stimuli.cell(row=story_id, column=9).value.strip()
-            seg2 = stimuli.cell(row=story_id, column=10).value.strip()
-            seg3 = stimuli.cell(row=story_id, column=11).value.strip()
-            story = seg1 + " " + seg2 + " " + seg3
-            story = story.replace("  ", " ")
-            sentences = [context.split(" ")] + self.segment_sentences(story, tok_model)
-            #print(sentences)
-            stories.append(sentences)
-
+    def read_all_events(self, subject_ids=None, **kwargs):
         blocks = {}
-        for subject in subject_ids:
-            blocks_for_subject = []
-            for block_index in range(0, datamatrix.shape[1]):
-                block = Block()
-                block.subject_id = str(subject)
-                block.block_id = block_index
-                block.sentences = stories[block_index]
-                event = ScanEvent()
-                event.subject_id = str(subject)
-                event.scan = datamatrix[subject][block_index]
-                event.timestamp = block_index
-                # For this dataset, the brain activation has already been averaged over the whole story,
-                # so I keep the stimulus empty because it refers to the whole text in block.sentences
-                # I do not yet have a theory on whether it makes sense to include the context primer or not and where.
+        self.roi_size = kwargs.get("roi", "10")
+        scan_dir = self.data_dir + "alice_data_shared/" + str(self.roi_size) + "mm/"
+        text_dir = self.data_dir + "alice_stim_shared/"
 
-                block.scan_events = [event]
-                blocks_for_subject.append(block)
-            blocks[str(subject)] = blocks_for_subject
+        # TODO limit subject range by input parameter subject_ids and clean code
+        for alice_subject in listdir(scan_dir):
+            # Skip this subject because the data is corrupted
+
+            if alice_subject == "s33-timecourses.txt":
+                continue
+
+            subject_id = int(re.search(r"\d+", alice_subject).group())
+            stimuli = self.read_stimuli(text_dir)
+            tokens = [word for (time, word) in stimuli]
+
+            sentences = self.get_sentences(tokens)
+
+            scans = self.read_scans(alice_subject, scan_dir)
+
+            # Initialize indeces
+            scan_time = 0.0
+            word_index = 0
+            word_time, word = stimuli[word_index]
+            scan_events = []
+            for scan in scans:
+                stimulus_pointer = []
+                while word_time < scan_time:
+                    stimulus_pointer.append((0, word_index))
+                    word_index += 1
+                    word_time = stimuli[word_index][0]
+                scan_event = ScanEvent(subject_id, stimulus_pointer, scan_time, scan)
+                scan_time += 2
+                scan_events.append(scan_event)
+            block = Block(subject_id, 1, sentences, scan_events, self.get_voxel_to_region_mapping())
+            blocks[subject_id] = [block]
         return blocks
 
+    def read_stimuli(self, text_dir):
+        xmin = 0.0
 
-    def segment_sentences(self, story, model):
-        processed = model(story)
-        tokenized_sentences = []
-        for sentence in processed.sents:
-            tokenized_sentences.append([tok.text for tok in sentence])
+        textdata_file = text_dir + 'DownTheRabbitHoleFinal_exp120_pad_1.TextGrid'
 
-        return tokenized_sentences
-# def get_voxel_to_region_mapping(mapperfile, data):
-# TODO: I NEED PYMVPA FOR THIS
-# mapper = mvpa2.mappers.flatten.FlattenMapper(h5py.File(mapperfile, 'r'))
-# print(mapper)
-# print(mapper.reverse(data).shape())
-# return mapper.reverse(data)
+        # --- PROCESS TEXT STIMULI --- #
+        # This is a textgrid file. Processing is not very elegant, but works for this particular example.
+        # The text does not contain any punctuation except for apostrophes, only words!
+        # Apostrophes are separated from the previous word, maybe I should remove the whitespace for preprocessing?
+        # We have 12 min of audio/text data.
+        # We save the stimuli in an array because word times are already ordered
+        stimuli = []
+
+        with open(textdata_file, 'r') as textdata:
+            i = 0
+            for line in textdata:
+                if i > 13:
+                    line = line.strip()
+                    # xmin should always be read BEFORE word
+                    if line.startswith("xmin"):
+                        xmin = float(line.split(" = ")[1])
+                    if line.startswith("text"):
+                        word = line.split(" = ")[1].strip("\"")
+                        # Praat words: "sp" = speech pause, we use an empty stimulus instead
+                        if word == "sp":
+                            word = ""
+                        stimuli.append([xmin, word.strip()])
+                i += 1
+        return stimuli
+
+    def read_scans(self, subject, scan_dir):
+        # --- PROCESS FMRI SCANS --- #
+        # We have 361 fmri scans.
+        # They have been taken every two seconds.
+        # One scan consists of entries for 6 regions --> much more condensed data than Harry Potter
+
+        with (open(scan_dir + subject, 'r')) as subjectdata:
+            scans = []
+            for line in subjectdata:
+                # Read activation values from file
+                activation_strings = line.strip().split("   ")
+
+                # Convert string values to floats
+                activations = []
+                for a in activation_strings:
+                    activations.append(float(a))
+
+                scans.append(activations)
+        return scans
+
+    # TODO: Detect sentence boundaries and collect sentences seen so far.
+    # TODO: There is no punctuation in the stimulus data, we need to get it from here: https://www.cs.cmu.edu/~rgs/alice-I.html
+    # Problem: need to adjust alignment then
+    # and reintroduce it
+    def get_sentences(self, tokens):
+        sentences = " ".join(tokens)
+        sentences = [[sentences.replace("  ", " ")]]
+        return sentences
+
+    # Note that region names are not the same as for the Wehbe data!
+    # The abbreviations stand for:
+    # LATL: left anterior temporal lobe
+    # RATL: right anterior temporal lobe
+    # LPTL: left posterior temporal lobe
+    # LIPL: left inferior parietal lobe
+    # LPreM: left premotor
+    # LIFG: left inferior frontal gyrus
+
+    def get_voxel_to_region_mapping(self):
+        return {0: "LATL", 1: "RATL", 2: "LPTL", 3: "LIPL", 4: "LPreM", 5: "LIFG", }
