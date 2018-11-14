@@ -2,6 +2,8 @@ import nilearn.signal
 import scipy
 import numpy as np
 
+### METHODS APPLIED OVER ALL VOXELS
+
 def detrend(timeseries_datapoints, t_r, standardize=False):
     return nilearn.signal.clean(timeseries_datapoints, sessions=None,
                          detrend=True, standardize=standardize,
@@ -12,22 +14,13 @@ def detrend(timeseries_datapoints, t_r, standardize=False):
 # Transform voxel values into z-scores. (x-mean)/stdev
 # This only works if stdev is NOT 0. This is the case for constant voxels.
 def zscore(data):
-    return scipy.stats.zscore(data)
+    zscores = scipy.stats.zscore(data)
+    if (np.isnan(zscores).any())
+        raise ValueError("Data contains voxels with stdev 0")
+    else:
+        return zscores
 
-# This method removes voxels with stdev 0 from the data.
-# This is a necessary step before applying z-score.
-# However, it should be applied reasonably.
-# For example, it might not make much sense to first eliminate certain voxels and then do spatial smoothing or ROI selection.
-def ignore_constant_voxels(data):
-    print("Original shape: " + str(data.shape))
-    selected_columns = np.where(np.std(data,0)==0)
-    adjusted_data = np.delete(data, list(selected_columns), 1)
-    print("After eliminating columns" + str(adjusted_data.shape))
-    return adjusted_data
 
-def select_voxels_by_variance(data):
-    # TODO Samira, you already had a function for this, right?
-    raise NotImplementedError()
 
 def minus_average_resting_states(timeseries_datapoints, brain_states_with_no_stimuli):
   """
@@ -48,15 +41,5 @@ def minus_average_resting_states(timeseries_datapoints, brain_states_with_no_sti
 # s = 3 w = 5, truncate = ((5-1)/2)-0.5) /2
 # But I am VERY unsure about this!
 # TODO if we use it, need to better understand this
-def spatial_smoothing(voxel_activations, sigma = 3, truncate = 0.75 ):
-    return scipy.ndimage.filters.gaussian_filter(voxel_activations, sigma, )
-
-# TODO not yet tested
-def region_of_interest_averaging(voxel_activations, voxel_to_region_mapping, regions_of_interest):
-    roi_activation = []
-    for roi in regions_of_interest:
-        roi_voxels = []
-        for voxel in voxel_activations:
-            if voxel_to_region_mapping[voxel] in regions_of_interest:
-                roi_voxels.append(voxel)
-        roi_activation.append(np.average(roi_voxels))
+def spatial_smoothing(voxel_activations, sigma = 3, t = 0.75 ):
+    return scipy.ndimage.filters.gaussian_filter(voxel_activations, sigma, truncate = t)
