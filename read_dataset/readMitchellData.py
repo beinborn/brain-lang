@@ -19,7 +19,7 @@ class HarryPotterReader(FmriReader):
     def __init__(self, data_dir):
         super(HarryPotterReader, self).__init__(data_dir)
 
-    def read_all(self, subject_ids=None):
+    def read_all_events(self, subject_ids=None):
         # Collect scan events
         blocks = {}
 
@@ -36,11 +36,10 @@ class HarryPotterReader(FmriReader):
 
         return blocks
 
+
     def read_block(self, subject_id, block_id):
         # Initialize
-        block = Block()
-        block.subject_id = subject_id
-        block.block_id = block_id
+        block = Block(subject_id=subject_id, block_id=block_id)
 
         # Data is in matlab format
         # Data structure is a dictionary with keys data, time, words, meta
@@ -81,18 +80,18 @@ class HarryPotterReader(FmriReader):
 
         # Iterate through scans
         scans = datafile["data"]
-        for i in range(scan_index_start, scan_index_end + 1):
 
-            # Set a scan event
-            scan_event = ScanEvent()
-            scan_event.subject_id = subject_id
-            scan_event.scan = scans[i]
-            scan_event.timestamp = scan_times[i]
+        for i in range(scan_index_start, scan_index_end + 1):
+            tokens = []
+            words = [word for (timestamp, word) in timed_words if
+                     (timestamp < scan_times[i] and timestamp >= scan_times[i - 1])]
+
+        for i in range(scan_index_start, scan_index_end + 1):
 
             tokens = []
             words = [word for (timestamp, word) in timed_words if
                      (timestamp < scan_times[i] and timestamp >= scan_times[i - 1])]
-            #print(words)
+
             # Collect sentences and align stimuli
             for word in words:
                 # We have not figured out what the @ should stand for and just remove it
@@ -112,7 +111,11 @@ class HarryPotterReader(FmriReader):
 
                 tokens.append((sentence_id, token_id))
 
-            scan_event.stimulus = tokens
+            # Set a scan event
+            scan_event = ScanEvent(subject_id=subject_id, stimulus_pointer=tokens,
+                                   timestamp=scan_times[i], scan=scans[i])
+
+
             scan_events.append(scan_event)
 
         block.scan_events = scan_events
@@ -154,69 +157,4 @@ def is_beginning_of_new_sentence(sentence, newword):
     else:
         return False
 
-# --------
-# These are some lines for processing the metadata which are not needed here, but I leave them in for reference.
-# Setting indices according to description.txt in the original data folder
-# sub_id_index = 0
-# number_of_scans_index = 1
-# number_of_voxels = 2
-# x_dim_index = 3
-# y_dim_index = 4
-# z_dim_index = 5
-# colToCoord_index = 6
-# coordToCol_index = 7
-# ROInumToName_index = 8
-# ROInumsToName_3d_index = 9
-# ROINames_index = 10
-# voxel_size_index = 11
-# matrix_index = 12
 
-# Extract metadata
-# Number of scans is constant over all subjects: 1351
-# Voxel size is also constant 3x3x3
-# Number of voxels varies across subjects.
-# the_subject_id = metadata[0][0][sub_id_index][0][0]
-# number_of_scans = metadata[0][0][number_of_scans_index][0][0]
-# number_of_voxels = metadata[0][0][number_of_voxels][0][0]
-# voxel_size = metadata[0][0][voxel_size_index]
-
-# Example: get coordinates of 5th voxel for this subject
-# coordinates_of_nth_voxel = metadata[0][0][6]
-# coordinates_of_nth_voxel[5]
-# which_voxel_for_coordinates = metadata[0][0][7]
-# get voxel number for set of coordinates
-# which_voxel_for_coordinates[36,7,19]
-
-#  These coordinates differ slightly across subjects
-# x_dim = metadata[0][0][x_dim_index][0][0]
-# y_dim = metadata[0][0][y_dim_index][0][0]
-# z_dim = metadata[0][0][z_dim_index][0][0]
-
-# This index provides the geometric coordinates (x,y,z) of the n-th voxel
-# coords = metadata[0][0][colToCoord_index]
-
-# I am not really sure how voxels are mapped into Regions of Interest
-# column_map = metadata[0][0][coordToCol_index]
-# nmi_matrix = metadata[0][0][matrix_index]
-# named_areas = metadata[0][0][ROInumToName_index]
-# area_names_list = metadata[0][0][ROINames_index][0]
-
-# The Appendix.pdf gives information about the fMRI preprocessing (slice timing correction etc)
-# Poldrack et al 2014: The goal of spatial normalization is to transform the brain images
-# from each individual in order to reduce the variability between individuals and allow
-# meaningful group analyses to be successfully performed.
-
-# TODO ask Samira: Wehbe et al used a Gaussian kernel smoother and voxel selection, you too?
-
-# Signal Drift: : a global signal decrease with subsequently acquired images in the scan (technological artifact)
-# Detrending? Tanabe & Meyer 2002:
-# Because of the inherently low signal to noise ratio (SNR) of fMRI data, removal of low frequency signal
-# intensity drift is an important preprocessing step, particularly in those brain regions that weakly activate.
-# Two known sources of drift are noise from the MR scanner and aliasing of physiological pulsations. However,
-# the amount and direction of drift is difficult to predict, even between neighboring voxels.
-
-# from nilearn documentation:
-# Standardize signal: set to unit variance
-# low_pass, high_pass: Respectively low and high cutoff frequencies, in Hertz.
-# Low-pass filtering improves specificity.
-# High-pass filtering should be kept small, to keep some sensitivity.

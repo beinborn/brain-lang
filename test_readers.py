@@ -54,35 +54,44 @@ harry_dir = "/Users/lisa/Corpora/HarryPotter/"
 #
 # print("\n\nHarry Potter Data")
 harry_data = readHarryPotterData.read_all(harry_dir)
-#print("Number of scans: " + str(len(harry_data)))
-#print("Subjects: " + str({event.subject_id for event in harry_data}))
-# print("Blocks: " + str({event.block for event in harry_data}))
-# print("Example: ")
-# print(vars(harry_data[18]))
+for block in harry_data[subject_id]:
+    # These are all already sorted, so I think you don't even need timesteps.
+    sentences = block.sentences
+    scans = [event.scan for event in block.scan_events]
+    stimuli = [event.stimulus for event in block.scan_events]
+    timestamps = [event.timestamp for event in block.scan_events]
 
+    print("\n\nBLOCK: " + str(block.block_id))
+    print("Number of scans: " + str(len(scans)))
+    print("Number of stimuli: " + str(len(stimuli)))
+    print("Number of timestamps: " + str(len(timestamps)))
+    print("Example stimuli 15-20 = Lists of (sentence_id, token_id): \n" + str(stimuli[14:20]))
+    print("Example sentences 1-3: \n" + str(sentences[0:3]))
 
-# Check if loading representations works for one example
-# subject1_events = [e for e in harry_data if (e.subject_id == "1" and e.block ==1)]
-# sentences = subject1_events[-1].sentences
-# print("Loading elmo embeddings for: " + str(sentences))
-# sentence_embeddings = load_representations.elmo_embed(sentences)
+test_readers.py
 
 # ---- KAPLAN DATA -----
 # This dataset is described in Dehghani et al. 2017: https://onlinelibrary.wiley.com/doi/epdf/10.1002/hbm.23814
 # I received it from Jonas Kaplan, but I am not allowed to share it.
 
-# english_story_data = readKaplanData.read_all("/Users/lisa/Corpora/Kaplan_data", "english")
-#
-# subject1 = [e for e in english_story_data if (e.subject_id == "0")]
-# print(len(subject1))
-# embeddings = []
-# for scan in subject1:
-#     sentences = tokenize.spacy_tokenize(scan.sentences)
-#     print(len(sentences))
-#     print("Loading elmo embeddings for: " + str(sentences))
-#     embedding = load_representations.elmo_embed(sentences)
-    # Structure of embedding: for each sentence: 3 layers, each layer has length = number of tokens
-    # How do we represent a story?
+# NOTE: the Kaplan data is different because we only have a single averaged scan for the whole story
+print("\n\nKaplan Data")
+kaplan_reader = StoryReader(data_dir="/Users/lisa/Corpora/Kaplan_data")
+subject_id = 0
+kaplan_data = kaplan_reader.read_all([subject_id], language="english")
+
+for block in kaplan_data[str(subject_id)]:
+    # These are all already sorted, so I think you don't even need timesteps.
+    sentences = block.sentences
+    scans = [event.scan for event in block.scan_events]
+    stimuli = block.sentences
+    timestamps = [event.timestamp for event in block.scan_events]
+
+    print("\n\nBLOCK: " + str(block.block_id))
+    print("Number of scans: " + str(len(scans)))
+    print("Number of sentences in story: " + str(len(stimuli)))
+    print("Number of timestamps: " + str(len(timestamps)))
+    print("Example sentences 1-3: \n" + str(sentences[0:3]))
 
 # farsi_story_data = readKaplanData.read_all("/Users/lisa/Corpora/Kaplan_data", "farsi")
 # chinese_story_data = readKaplanData.read_all("/Users/lisa/Corpora/Kaplan_data", "chinese")
