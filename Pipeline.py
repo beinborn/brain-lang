@@ -120,9 +120,7 @@ class Pipeline(object):
                     # -> check how Samira did it, might also do it in the reader
                     sentences = block.sentences
                     logging.info("Get sentence embeddings")
-                    sentence_embeddings = self.stimuli_encoder.get_sentence_embeddings(block.block_id, sentences,
-                                                                                       layer_id=1,
-                                                                                       only_forward=False)
+                    sentence_embeddings = self.stimuli_encoder.get_sentence_embeddings(block.block_id, sentences)
                     logging.info("Sentence embeddings obtained")
                     scans = [event.scan for event in block.scan_events]
 

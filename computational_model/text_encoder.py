@@ -21,6 +21,8 @@ class ElmoEncoder(TextEncoder):
     def __init__(self, embedding_dir, load_previous):
         super(ElmoEncoder, self).__init__(embedding_dir)
         self.load_previous = load_previous
+        self.layer_id = 1
+        self.only_forward = True
         if not load_previous:
             self.embedder = ElmoEmbedder()
 
@@ -32,7 +34,7 @@ class ElmoEncoder(TextEncoder):
     # Can we use elmo for Dutch? Try model from here: https://github.com/HIT-SCIR/ELMoForManyLangs
 
     # Takes a list of sentences and returns a list of embeddings
-    def get_sentence_embeddings(self, block_id, sentences, layer_id=1, only_forward=True):
+    def get_sentence_embeddings(self, block_id, sentences):
 
         # Layer 0 are token representations which are not sensitive to context
         # Layer 1 are representations from the first bilstm
@@ -57,10 +59,10 @@ class ElmoEncoder(TextEncoder):
         if not len(sentence_embeddings) == len(sentences):
             raise RuntimeError("Something went wrong with the embedding")
 
-        single_layer_embeddings = [embedding[layer_id] for embedding in sentence_embeddings[:]]
+        single_layer_embeddings = [embedding[self.layer_id] for embedding in sentence_embeddings[:]]
 
     # TODO Is it only the forward lstm, if I use only the first half???
-        if only_forward:
+        if self.only_forward:
             forward_embeddings = []
             for sent in single_layer_embeddings:
                 forward_token_embeddings = []

@@ -3,7 +3,7 @@ from mapping_models.basic_mapper import BasicMapper
 import numpy as np
 
 class SkMapper(BasicMapper):
-  def __init__(self, alpha = 0.0, model_fn=Ridge):
+  def __init__(self, alpha = 100, model_fn=Ridge):
     super(SkMapper, self).__init__()
     self.alpha = alpha
     self.model_fn = model_fn

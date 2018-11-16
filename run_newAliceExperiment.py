@@ -2,29 +2,30 @@
 
 """
 from Pipeline import Pipeline
-from read_dataset.readMitchellData import MitchellReader
+from read_dataset.readAliceData import AliceDataReader
 from computational_model.text_encoder import ElmoEncoder
 from mapping_models.sk_mapper import SkMapper
 import logging
-from evaluation.metrics import mean_explain_variance
-load_previous = True
-data_dir = "/Users/lisa/Corpora/mitchell/"
-save_dir = "/Users/lisa/Experiments/fmri/Mitchell/"
 
+data_dir = "/Users/lisa/Corpora/alice_data/"
+save_dir = "/Users/lisa/Experiments/fmri/Alice/"
+load_previous = False
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
 
     # Define how we want to read the brain data
-    mitchell_reader = MitchellReader(data_dir=data_dir)
+    alice_reader = AliceDataReader(data_dir=data_dir)
 
     # Define how we want to computationaly represent the stimuli
-    stimuli_encoder = ElmoEncoder(save_dir + "/embeddings/", load_previous)
-    stimuli_encoder.layer_id = 0
+    stimuli_encoder = ElmoEncoder(save_dir + "embeddings/", load_previous)
+
     # Set the mapping model
     mapper = SkMapper(alpha=1.0)
 
     # Build the pipeline object
-    experiment = Pipeline(mitchell_reader, stimuli_encoder, mapper, save_dir=save_dir)
+    experiment = Pipeline(alice_reader, stimuli_encoder, mapper, save_dir=save_dir)
     experiment.load_previous = load_previous
+    experiment.delay = 2
+    experiment.subject_ids = [18]
     # Train and evaluate
     experiment.process()

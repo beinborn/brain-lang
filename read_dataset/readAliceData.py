@@ -3,7 +3,7 @@ import regex as re
 from os import listdir
 from .scan_elements import Block, ScanEvent
 from .FmriReader import FmriReader
-import spacy
+from language_preprocessing.tokenize import SpacyTokenizer
 
 
 class AliceDataReader(FmriReader):
@@ -16,33 +16,38 @@ class AliceDataReader(FmriReader):
         scan_dir = self.data_dir + "alice_data_shared/" + str(self.roi_size) + "mm/"
         text_dir = self.data_dir + "alice_stim_shared/"
 
-        # TODO limit subject range by input parameter subject_ids and clean code
-        for alice_subject in listdir(scan_dir):
-            # Skip this subject because the data is corrupted
+        stimuli = self.read_stimuli(text_dir)
+        tokens = [word for (time, word) in stimuli]
+        sentences, stimuli_pointers = self.get_pointers(stimuli)
 
-            if alice_subject == "s33-timecourses.txt":
+        # Set subject_ids
+        if subject_ids is None:
+            subject_ids = listdir(scan_dir)
+            for i in range(0, len(subject_ids)):
+                filename = subject_ids[i]
+                subject_ids[i] = int(re.search(r"\d+", filename).group())
+
+        for subject_id in subject_ids:
+            if subject_id == 33:
                 continue
 
-            subject_id = int(re.search(r"\d+", alice_subject).group())
-            stimuli = self.read_stimuli(text_dir)
-            tokens = [word for (time, word) in stimuli]
-
-            sentences = self.get_sentences(tokens)
-
-            scans = self.read_scans(alice_subject, scan_dir)
+            scans = self.read_scans("s" + str(subject_id) + "-timecourses.txt", scan_dir)
 
             # Initialize indeces
             scan_time = 0.0
-            word_index = 0
-            word_time, word = stimuli[word_index]
+            last_scan_time = 0.0
             scan_events = []
+            previous_sent = 0
             for scan in scans:
-                stimulus_pointer = []
-                while word_time < scan_time:
-                    stimulus_pointer.append((0, word_index))
-                    word_index += 1
-                    word_time = stimuli[word_index][0]
-                scan_event = ScanEvent(subject_id, stimulus_pointer, scan_time, scan)
+                pointers_for_scan = [pointer for (word_time, pointer) in stimuli_pointers if
+                                     word_time < scan_time and word_time > last_scan_time]
+                if len(pointers_for_scan)>0:
+                    current_sent = pointers_for_scan[0][0]
+                    if not (current_sent == previous_sent):
+                        print("Sentence boundary at scan boundary: " + str(sentences[current_sent]))
+                    previous_sent = pointers_for_scan[-1][0]
+                scan_event = ScanEvent(subject_id, pointers_for_scan, scan_time, scan)
+                last_scan_time = scan_time
                 scan_time += 2
                 scan_events.append(scan_event)
             block = Block(subject_id, 1, sentences, scan_events, self.get_voxel_to_region_mapping())
@@ -99,14 +104,73 @@ class AliceDataReader(FmriReader):
                 scans.append(activations)
         return scans
 
-    # TODO: Detect sentence boundaries and collect sentences seen so far.
-    # TODO: There is no punctuation in the stimulus data, we need to get it from here: https://www.cs.cmu.edu/~rgs/alice-I.html
-    # Problem: need to adjust alignment then
-    # and reintroduce it
-    def get_sentences(self, tokens):
-        sentences = " ".join(tokens)
-        sentences = [[sentences.replace("  ", " ")]]
-        return sentences
+    # Aligning the transcription (which had no punctuation) to the Gutenberg version of the text (with punctuation)
+    # was an awful experience. I would not do it again.
+    # The transcripts contain so many deviations from the original (e.g. missing words, typos etc)
+    # which I had to fix manually.
+    # I strongly recommend to use the modified version of the text alice_transcription_with_punctuation.txt in this project.
+    def get_pointers(self, stimuli):
+        with (open("alice_transcription_with_punctuation.txt", 'r')) as textfile:
+            alice_text = textfile.read()
+        tokenizer = SpacyTokenizer()
+        tokenized_alice_text = tokenizer.tokenize(alice_text, sentence_mode=True)
+        stimuli_pointers = []
+        sentence_index = 0
+        token_index = 0
+        stimulus_index = 0
+
+        while (sentence_index < len(tokenized_alice_text)):
+            # Reached end, add final punctuation
+            if stimulus_index >= len(stimuli):
+                for tok_index in range(token_index, len(tokenized_alice_text[sentence_index])):
+                    stimuli_pointers.append((time, (sentence_index, tok_index)))
+                break
+            original = tokenized_alice_text[sentence_index][token_index]
+            time = stimuli[stimulus_index][0]
+            word = stimuli[stimulus_index][1]
+
+            # Correct typos in data
+            if (word == "Zeland"):
+                word = "Zealand"
+            if (word == "happpens"):
+                word = "happens"
+            if time == 463.4450166426263:
+                word = "through"
+            if time == 477.0722496596:
+                word = "knew"
+
+            if len(word) > 0:
+                if word.lower() == original.lower():
+                    stimulus_index += 1
+                    stimuli_pointers.append((time, (sentence_index, token_index)))
+                    token_index += 1
+                else:
+                    # Add punctuation
+                    if original.strip() in [".", ",", ":", "?", ";", ")", "(", "\"", " ", "!", "-", "--", "[",
+                                            "]"] or len(original.strip()) == 0:
+
+                        stimuli_pointers.append((time, (sentence_index, token_index)))
+                        token_index += 1
+                    # align apostrophes: e.g. transcription is "she'd" but tokens are "she" and "'d"
+                    elif ("\'" in word):
+                        # add next token directly to pointers
+                        stimuli_pointers.append((time, (sentence_index, token_index)))
+                        stimuli_pointers.append((time, (sentence_index, token_index + 1)))
+                        token_index += 2
+                        stimulus_index += 1
+                    else:
+                        raise RuntimeError("Alignment error with stimulus: " + word + " at time " + str(time))
+
+                # Reached end of current sentence
+
+                if token_index == len(tokenized_alice_text[sentence_index]):
+                    sentence_index += 1
+                    token_index = 0
+
+            # Drop empty stimuli.  The reader replaced break signals with ""
+            else:
+                stimulus_index += 1
+        return tokenized_alice_text, stimuli_pointers
 
     # Note that region names are not the same as for the Wehbe data!
     # The abbreviations stand for:

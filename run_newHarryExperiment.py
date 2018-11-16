@@ -10,7 +10,7 @@ import logging
 
 data_dir = "/Users/lisa/Corpora/HarryPotter/"
 save_dir = "/Users/lisa/Experiments/fmri/HarryPotter/"
-load_previous = False
+load_previous = True
 if __name__ == '__main__':
   logging.basicConfig(level=logging.INFO)
 
@@ -21,7 +21,7 @@ if __name__ == '__main__':
   stimuli_encoder = ElmoEncoder(save_dir + "embeddings/", load_previous)
 
   # Set the mapping model
-  mapper = SkMapper(alpha = 1.0)
+  mapper = SkMapper()
 
   # Build the pipeline object
   experiment = Pipeline(harry_reader, stimuli_encoder, mapper, save_dir =save_dir)
