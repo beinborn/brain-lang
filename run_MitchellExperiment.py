@@ -1,38 +1,31 @@
 """Main file to run for training and evaluating the models.
 
 """
-from ExplainBrain import ExplainBrain
-from read_dataset.readKaplanData import StoryDataReader
-from computational_model.text_encoder import TfHubElmoEncoder
+from Pipeline import Pipeline
+from read_dataset.readMitchellData import MitchellReader
+from computational_model.text_encoder import ElmoEncoder
 from mapping_models.sk_mapper import SkMapper
-import tensorflow as tf
+import logging
+from evaluation.metrics import explained_variance
+load_previous = True
+data_dir = "/Users/lisa/Corpora/mitchell/"
+save_dir = "/Users/lisa/Experiments/fmri/Mitchell/"
 
-
-FLAGS = tf.flags.FLAGS
-
-tf.flags.DEFINE_float('alpha', 0, 'alpha')
-tf.flags.DEFINE_string('embedding_dir', None, 'path to the file containing the embeddings')
-
-hparams = FLAGS
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
 
-  tf.logging.set_verbosity(tf.logging.INFO)
+    # Define how we want to read the brain data
+    mitchell_reader = MitchellReader(data_dir=data_dir)
 
-  # Define how we want to read the brain data
-  print("1. initialize brain data reader for Kaplan Data ...")
-  harry_reader = StoryDataReader(data_dir="/Users/lisa/Corpora/Kaplan_data")
+    # Define how we want to computationaly represent the stimuli
+    stimuli_encoder = ElmoEncoder(save_dir + "/embeddings/", load_previous)
 
-  # Define how we want to computationaly represent the stimuli
-  print("2. initialize text encoder ...")
-  stimuli_encoder = TfHubElmoEncoder(hparams)
+    # Set the mapping model
+    mapper = SkMapper(alpha=1.0)
 
-  print("3. initialize mapper ...")
-  mapper = SkMapper(hparams)
-
-  # Build the pipeline object
-  print("4. initialize Explainer...")
-  explain_brain = ExplainBrain(harry_reader, stimuli_encoder, mapper)
-
-  # Train and evaluate how well we can predict the brain activatiobs
-  print("5. train and evaluate...")
-  explain_brain.train_mapper()
+    # Build the pipeline object
+    experiment = Pipeline(mitchell_reader, stimuli_encoder, mapper, save_dir=save_dir)
+    experiment.load_previous = load_previous
+    experiment.metrics = {'explained_variance': explained_variance}
+    # Train and evaluate
+    experiment.process()

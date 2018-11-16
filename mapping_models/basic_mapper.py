@@ -1,8 +1,8 @@
 from evaluation.metrics import  mse
 
 class BasicMapper(object):
-  def __init__(self, hparams):
-    self.hparams = hparams
+  def __init__(self):
+    pass
 
   def build(self, is_train):
     raise NotImplementedError()

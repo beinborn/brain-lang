@@ -34,8 +34,6 @@ class MitchellReader(FmriReader):
             for i in range(0, len(datafile["data"])):
                 scan = datafile["data"][i][0][0]
                 word = datafile["info"][0][i][2][0]
-                print(scan)
-                print(word)
                 scan_event = ScanEvent(subject_id, [(0, 0)], i, scan)
                 block = Block(subject_id, i, [[word]], [scan_event], mapping)
                 blocks_for_subject.append(block)
@@ -45,8 +43,8 @@ class MitchellReader(FmriReader):
     def get_voxel_to_region_mapping(self, colToCoord):
         # I am assuming that the data is already MNI normalized, because the number of voxels is the same for all subjects.
         # But I am not completely sure.
-        for voxel in range(0, len(colToCoord)):
+        #for voxel in range(0, len(colToCoord[0][0])):
             # TODO ask Samira or Rochelle how to get the labels, Matlab script is quite cryptic
-            print(colToCoord[0][0][voxel])
+            #print(colToCoord[0][0][voxel])
 
         return {}

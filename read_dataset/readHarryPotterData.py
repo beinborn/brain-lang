@@ -2,6 +2,8 @@ import numpy as np
 import scipy.io
 from .scan_elements import Block, ScanEvent
 from .FmriReader import FmriReader
+from language_preprocessing.tokenize import SpacyTokenizer
+import logging
 
 # This method reads the Harry Potter data that was published by Wehbe et al. 2014
 # Paper: http://aclweb.org/anthology/D/D14/D14-1030.pdf
@@ -13,6 +15,7 @@ from .FmriReader import FmriReader
 # A scan is taken every two seconds.
 # The chapter was presented in four blocks of app. 12 minutes.
 # Voxel size: 3 x 3 x 3
+
 
 class HarryPotterReader(FmriReader):
 
@@ -28,7 +31,8 @@ class HarryPotterReader(FmriReader):
 
         for subject_id in subject_ids:
             blocks_for_subject = []
-            for block_id in range(1, 5):
+            for block_id in (range(1, 5)):
+                logging.info("Reading block: " + str(block_id))
                 block = self.read_block(subject_id, block_id)
                 block.voxel_to_region_mapping = self.get_voxel_to_region_mapping(subject_id)
                 blocks_for_subject.append(block)
@@ -76,42 +80,48 @@ class HarryPotterReader(FmriReader):
         sentences = []
         sentence_id = 0
         token_id = 0
-
+        tokenizer = SpacyTokenizer()
         # Iterate through scans
         scans = datafile["data"]
 
         for i in range(scan_index_start, scan_index_end + 1):
-            tokens = []
+            token_pointers = []
             words = [word for (timestamp, word) in timed_words if
                      (timestamp < scan_times[i] and timestamp >= scan_times[i - 1])]
 
         for i in range(scan_index_start, scan_index_end + 1):
 
-            tokens = []
+            token_pointers = []
             words = [word for (timestamp, word) in timed_words if
                      (timestamp < scan_times[i] and timestamp >= scan_times[i - 1])]
 
             # Collect sentences and align stimuli
+
             for word in words:
                 # We have not figured out what the @ should stand for and just remove it
                 word = word.replace("@", "")
-                if len(sentences) > 0:
-                    if is_beginning_of_new_sentence(sentences[sentence_id], word):
-                        sentence_id += 1
-                        token_id = 0
-                        sentences.append([word])
+                # I am tokenizing the word in the reader because I only use the elmo embedding.
+                # If we want to switch embedders, it is better to have tokenization as a seprate module
+                tokenized_words = tokenizer.tokenize(word)
+                for token in tokenized_words:
+                    if len(sentences) > 0:
+                        if is_beginning_of_new_sentence(sentences[sentence_id], token):
+                            sentence_id += 1
+                            token_id = 0
+
+                            sentences.append([token])
+                        else:
+                            sentences[sentence_id].append(token)
+                            token_id += 1
+
+                    # Add first word to sentences
                     else:
-                        sentences[sentence_id].append(word)
-                        token_id += 1
+                        sentences = [[token]]
 
-                # Add first word to sentences
-                else:
-                    sentences = [[word]]
-
-                tokens.append((sentence_id, token_id))
+                token_pointers.append((sentence_id, token_id))
 
             # Set a scan event
-            scan_event = ScanEvent(subject_id=subject_id, stimulus_pointer=tokens,
+            scan_event = ScanEvent(subject_id=subject_id, stimulus_pointers=token_pointers,
                                    timestamp=scan_times[i], scan=scans[i])
 
 
@@ -155,5 +165,7 @@ def is_beginning_of_new_sentence(sentence, newword):
         return True
     else:
         return False
+
+
 
 

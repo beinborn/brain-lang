@@ -2,7 +2,7 @@ import numpy as np
 
 
 class ScanEvent(object):
-    def __init__(self, subject_id, stimulus_pointer, timestamp, scan):
+    def __init__(self, subject_id, stimulus_pointers, timestamp, scan):
         """
 
         :param subject_id:
@@ -11,7 +11,7 @@ class ScanEvent(object):
         :param scan: Array of voxel activations
         """
         self.subject_id = subject_id
-        self.stimulus_pointer = stimulus_pointer
+        self.stimulus_pointers = stimulus_pointers
         self.timestamp = timestamp
         self.scan = scan
 

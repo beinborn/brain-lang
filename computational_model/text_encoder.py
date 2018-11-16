@@ -1,77 +1,70 @@
 import tensorflow as tf
 import tensorflow_hub as hub
 from util.misc import pad_lists
+from allennlp.commands.elmo import ElmoEmbedder
+from language_preprocessing import tokenize
+import numpy as np
+import pickle
+import os
+import logging
 
 class TextEncoder(object):
-  def __init__(self, hparams):
-    self.hparams = hparams
-    self.embedding_dir = self.hparams.embedding_dir
+    def __init__(self, embedding_dir):
+        self.embedding_dir = embedding_dir
 
-  def get_embeddings(self, text, sequences_length):
-    raise NotImplementedError()
-
-  def get_embeddings_values(self, text_sequences, key='elmo'):
-    with tf.Session() as sess:
-      sess.run(tf.global_variables_initializer())
-      sess.run(tf.table_initializer())
-      print(text_sequences)
-      embeddings = sess.run(self.get_embeddings(text_sequences, key))
-    return embeddings
-
-  def save_embeddings(self, text):
-    raise NotImplementedError()
-
-  def load_saved_embeddings(self):
-    if self.embedding_dir is not None:
-      print('loading embeddings')
+    def get_embeddings(self, text, sequences_length):
+        raise NotImplementedError()
 
 
+class ElmoEncoder(TextEncoder):
 
-class TfHubElmoEncoder(TextEncoder):
-  """ELMO (tf.hub module).
-   """
-  def __init__(self, hparams, trainable=False):
-    super(TfHubElmoEncoder, self).__init__(hparams)
-    self.embedder = hub.Module('https://tfhub.dev/google/elmo/2', trainable=trainable)
+    def __init__(self, embedding_dir, load_previous):
+        super(ElmoEncoder, self).__init__(embedding_dir)
+        if not load_previous:
+            self.embedder = ElmoEmbedder()
+            self.load_previous = load_previous
 
-  def get_embeddings(self, text_sequences, sequences_length, key='elmo'):
-    padded_text_sequences = pad_lists(text_sequences)
-    embeddings = self.embedder(
-      inputs={'tokens': padded_text_sequences,
-              'sequence_len': sequences_length }
-      ,signature='tokens', as_dict=True)[key]
+    # Get sentence embeddings from elmo
+    # make sure that tokenization is correct for ELMO, e.g. "don't" becomes "do n't"
+    # They don't specify it, but they seemed to have used spacy tokenization for that
 
-    return embeddings
+    # Can we use elmo for Dutch? Try model from here: https://github.com/HIT-SCIR/ELMoForManyLangs
 
-  def get_text_embedding_column(key='elmo'):
-    return hub.text_embedding_column(
-      key="sentence",
-      module_spec="https://tfhub.dev/google/elmo/2")
+    # Takes a list of sentences and returns a list of embeddings
+    def get_sentence_embeddings(self, block_id, sentences, layer_id=1, only_forward=True):
 
+        # Layer 0 are token representations which are not sensitive to context
+        # Layer 1 are representations from the first bilstm
+        # Layer 2 are the representations from the second bilstm
+        # TODO: Usually one learns a weighted sum over the three layers. We should discuss what to use here
+        embedding_file = self.embedding_dir + str(block_id) + "/sentence_embeddings.pickle"
+        if self.load_previous:
+            logging.info("Loading embeddings from " + embedding_file)
+            with open(embedding_file, 'rb') as handle:
+                sentence_embeddings = pickle.load(handle)
+        else:
 
-class TfHubUniversalEncoder(TextEncoder):
-  """Google Universal Sentence Encoder (tf.hub module).
-  """
-  def __init__(self, hparams, trainable=False):
-    super(TfHubUniversalEncoder, self).__init__(hparams)
-    self.embedder = hub.Module('https://tfhub.dev/google/universal-sentence-encoder/2', trainable=trainable)
+            sentence_embeddings = self.embedder.embed_batch(sentences)
 
-  def get_embeddings(self, text_sequences, key='elmo'):
-    print("text:", text_sequences)
-    embeddings = self.embedder(
-      text_sequences,
-      signature="default",
-      as_dict=True)[key]
+            # Save embeddings
+            os.makedirs(os.path.dirname(embedding_file), exist_ok=True)
+            with open(embedding_file, 'wb') as handle:
+                pickle.dump(sentence_embeddings, handle)
 
-    return embeddings
+    # Shape of sentence embeddings: ( number of sentences,3, 1024)
 
+        if not len(sentence_embeddings) == len(sentences):
+            raise RuntimeError("Something went wrong with the embedding")
 
-  def get_text_embedding_column(key='sentence'):
-    return hub.text_embedding_column(
-      key="sentence",
-      module_spec="https://tfhub.dev/google/universal-sentence-encoder/2")
+        single_layer_embeddings = [embedding[layer_id] for embedding in sentence_embeddings[:]]
 
+    # TODO Is it only the forward lstm, if I use only the first half???
+        if only_forward:
+            forward_embeddings = []
+            for sent in single_layer_embeddings:
+                forward_token_embeddings = []
+                for tok_embedding in sent:
+                    forward_token_embeddings.append(tok_embedding[0:512])
+            return forward_embeddings
 
-class BertEncoder(TextEncoder):
-  def __init__(self):
-    raise NotImplementedError()
+        return single_layer_embeddings

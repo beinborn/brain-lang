@@ -15,7 +15,7 @@ def detrend(timeseries_datapoints, t_r, standardize=False):
 # This only works if stdev is NOT 0. This is the case for constant voxels.
 def zscore(data):
     zscores = scipy.stats.zscore(data)
-    if (np.isnan(zscores).any())
+    if (np.isnan(zscores).any()):
         raise ValueError("Data contains voxels with stdev 0")
     else:
         return zscores
@@ -28,7 +28,7 @@ def minus_average_resting_states(timeseries_datapoints, brain_states_with_no_sti
   :param brain_states_with_no_stimuli:
   :return:
   """
-
+ # TODO does not seem to work
   # For now we simply normalize by minusing the avg resting state.
   average_brain_state_with_no_stimuli = np.mean(brain_states_with_no_stimuli, axis=-1)
   timeseries_datapoints = timeseries_datapoints - average_brain_state_with_no_stimuli

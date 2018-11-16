@@ -24,7 +24,7 @@ class StoryDataReader(FmriReader):
 
     def read_all_events(self, subject_ids=None, **kwargs):
         self.language = kwargs.get("language", "english")
-        datafile = self.data_dir + "/30_" + self.language + "_storydata_masked.hd5"
+        datafile = self.data_dir + "30_" + self.language + "_storydata_masked.hd5"
 
         data = h5py.File(datafile, 'r')
         datamatrix = np.array(data["__unnamed__"][()])

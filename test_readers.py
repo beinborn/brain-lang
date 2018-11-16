@@ -3,7 +3,7 @@ from read_dataset.readHarryPotterData import HarryPotterReader
 from read_dataset.readKaplanData import StoryDataReader
 from read_dataset.readAliceData import AliceDataReader
 from read_dataset.readMitchellData import MitchellReader
-from computational_model import load_representations
+
 from language_preprocessing.tokenize import SpacyTokenizer
 import numpy as np
 # --- Here, we read the fmri datasets. ----
@@ -29,7 +29,7 @@ mitchell_data = mitchell_reader.read_all_events(subject_ids=[subject_id])
 for block in mitchell_data[subject_id][0:5]:
     sentences = block.sentences
     scans = [event.scan for event in block.scan_events]
-    stimuli = [event.stimulus_pointer for event in block.scan_events]
+    stimuli = [event.stimulus_pointers for event in block.scan_events]
     timestamps = [event.timestamp for event in block.scan_events]
 
     print("\n\nBLOCK: " + str(block.block_id))
@@ -52,7 +52,7 @@ alice_data = alice_reader.read_all_events(subject_ids=[subject_id])
 for block in alice_data[subject_id]:
     sentences = block.sentences
     scans = [event.scan for event in block.scan_events]
-    stimuli = [event.stimulus_pointer for event in block.scan_events]
+    stimuli = [event.stimulus_pointers for event in block.scan_events]
     timestamps = [event.timestamp for event in block.scan_events]
 
     print("\n\nBLOCK: " + str(block.block_id))
@@ -95,7 +95,7 @@ tokenizer_fn = SpacyTokenizer.tokenize
 for block in harry_data[subject_id]:
     sentences = block.sentences
     scans = [event.scan for event in block.scan_events]
-    stimuli = [event.stimulus_pointer for event in block.scan_events]
+    stimuli = [event.stimulus_pointers for event in block.scan_events]
     timestamps = [event.timestamp for event in block.scan_events]
 
     print("\n\nBLOCK: " + str(block.block_id))
