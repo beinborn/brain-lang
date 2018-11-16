@@ -20,9 +20,10 @@ class ElmoEncoder(TextEncoder):
 
     def __init__(self, embedding_dir, load_previous):
         super(ElmoEncoder, self).__init__(embedding_dir)
+        self.load_previous = load_previous
         if not load_previous:
             self.embedder = ElmoEmbedder()
-            self.load_previous = load_previous
+
 
     # Get sentence embeddings from elmo
     # make sure that tokenization is correct for ELMO, e.g. "don't" becomes "do n't"

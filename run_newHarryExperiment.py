@@ -10,7 +10,7 @@ import logging
 
 data_dir = "/Users/lisa/Corpora/HarryPotter/"
 save_dir = "/Users/lisa/Experiments/fmri/HarryPotter/"
-load_previous = True
+load_previous = False
 if __name__ == '__main__':
   logging.basicConfig(level=logging.INFO)
 
@@ -26,5 +26,6 @@ if __name__ == '__main__':
   # Build the pipeline object
   experiment = Pipeline(harry_reader, stimuli_encoder, mapper, save_dir =save_dir)
   experiment.load_previous = load_previous
+  experiment.delay = 2
   # Train and evaluate
   experiment.process()

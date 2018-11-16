@@ -16,6 +16,7 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 
+
 class Pipeline(object):
     def __init__(self, brain_data_reader, stimuli_encoder, mapper, save_dir="processed_data/"):
         self.brain_data_reader = brain_data_reader
@@ -33,73 +34,72 @@ class Pipeline(object):
 
         # TODO: how should we preprocess voxels: per block? Train and test separately? Does this make sense?
 
-
     def process(self):
 
         # Reading data
         self.prepare_data(False)
 
-        # Start cross-validation
         # TODO find solution for alternative splits, eg. don't know yet how to split the alice data
         num_blocks = len(self.data_blocks.keys())
         if num_blocks >= 3:
-            all_predictions = []
-            all_targets = []
-            for testblock in self.data_blocks.keys():
+            self.crossvalidate()
 
-                logging.info("Starting fold, testing on: " + str(testblock))
-                train_scans = []
-                train_embeddings = []
-                for key, value in self.data_blocks.items():
-                    scans = value[0]
-                    embeddings = value[1]
-                    if not key == testblock:
-                        train_scans += scans
-                        train_embeddings += embeddings
-                    else:
-                        test_scans = scans
-                        test_embeddings = embeddings
+    def crossvalidate(self):
+        # Start cross-validation
+        all_predictions = []
+        all_targets = []
+        for testblock in self.data_blocks.keys():
 
-                # TODO how to deal with voxel selection?
-                train_scans = self.preprocess_voxels(train_scans)
-                test_scans = self.preprocess_voxels(test_scans)
-
-                # Train the mapper
-                logging.info('Start training ...')
-                # TODO I need to store the results somewhere to average over all folds
-                if self.task_is_text2brain:
-                    logging.info("Training to predict brain activations")
-                    train_input = np.asarray(train_embeddings)
-                    train_targets = np.asarray(train_scans)
-                    test_input = np.asarray(test_embeddings)
-                    test_targets = np.asarray(test_scans)
+            logging.info("Starting fold, testing on: " + str(testblock))
+            train_scans = []
+            train_embeddings = []
+            for key, value in self.data_blocks.items():
+                scans = value[0]
+                embeddings = value[1]
+                if not key == testblock:
+                    train_scans += scans
+                    train_embeddings += embeddings
                 else:
-                    train_input = np.asarray(train_scans)
-                    train_targets = np.asarray(train_embeddings)
-                    test_input = np.asarray(test_scans)
-                    test_targets = np.asarray(test_embeddings)
-                    logging.info("Training to predict text embeddings")
+                    test_scans = scans
+                    test_embeddings = embeddings
 
+            # TODO how to deal with voxel selection?
+            train_scans = self.preprocess_voxels(train_scans)
+            test_scans = self.preprocess_voxels(test_scans)
 
-                self.mapper.train(train_input, train_targets)
-                logging.info('Training completed.')
-                logging.info('Training loss: ')
-                self.mapper.map(train_input, train_targets)
-                logging.info('Predicting voxel activations for test.')
-                logging.info("Length of test input: " + str(len(test_input)))
-                predictions = self.mapper.map(inputs=test_input, targets=test_targets)["predictions"]
-                all_predictions.extend(predictions)
-                all_targets.extend(test_targets)
+            # Train the mapper
+            logging.info('Start training ...')
+            # TODO I need to store the results somewhere to average over all folds
+            if self.task_is_text2brain:
+                logging.info("Training to predict brain activations")
+                train_input = np.asarray(train_embeddings)
+                train_targets = np.asarray(train_scans)
+                test_input = np.asarray(test_embeddings)
+                test_targets = np.asarray(test_scans)
+            else:
+                train_input = np.asarray(train_scans)
+                train_targets = np.asarray(train_embeddings)
+                test_input = np.asarray(test_scans)
+                test_targets = np.asarray(test_embeddings)
+                logging.info("Training to predict text embeddings")
 
-                if (len(predictions) >10):
-                    logging.info("Evaluating fold")
-                    self.evaluate(predictions, test_targets)
-                logging.info("End of fold")
+            self.mapper.train(train_input, train_targets)
+            logging.info('Training completed.')
+            logging.info('Training loss: ')
+            self.mapper.map(train_input, train_targets)
+            logging.info('Predicting voxel activations for test.')
+            logging.info("Length of test input: " + str(len(test_input)))
+            predictions = self.mapper.map(inputs=test_input, targets=test_targets)["predictions"]
+            all_predictions.extend(predictions)
+            all_targets.extend(test_targets)
 
-            logging.info("Evaluate all predictions")
-            self.evaluate(all_predictions, all_targets)
+            if (len(predictions) > 10):
+                logging.info("Evaluating fold")
+                self.evaluate(predictions, test_targets)
+            logging.info("End of fold")
 
-
+        logging.info("End of cross-validation. Evaluate all predictions")
+        self.evaluate(all_predictions, all_targets)
 
     def prepare_data(self, normalize_by_rest):
 
@@ -202,6 +202,7 @@ class Pipeline(object):
 
     def evaluate(self, predictions, targets):
         # TODO this function should return something!
+        logging.info("Evaluating...")
         for metric_name, metric_fn in self.metrics.items():
             metric_eval = metric_fn(predictions, targets)
             print(metric_name, ":", metric_eval)

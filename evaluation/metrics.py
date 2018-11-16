@@ -27,6 +27,16 @@ def cosine_similarity(predictions, targets):
 def binary_accuracy(predictions, targets):
   raise NotImplementedError()
 
+def representational_similarity_analysis(sscans, embeddings, distance_metric):
+  # If we do this, we do not need to apply a mapping model
+  # Calculate matrix of distances between all pairs of scans
+  # Calculate matrix of distances between all pairs of embeddings
+  # for all possible pairs of (scan, embedding) calculate
+  # correlation between distance vectors in similarity metrics
+  raise NotImplementedError()
+
+def search_light_analysis(predictions, targets, voxel_to_xyz_mapping):
+  raise NotImplementedError()
 def binary_accuracy_from_dists(cosine_dists, euclidean_dists):
   nn_index = np.argmin(cosine_dists, axis=1)
   accuracy_on_test = np.mean(nn_index == np.argmax(np.eye(cosine_dists.shape[0]), axis=1))
