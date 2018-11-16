@@ -5,13 +5,14 @@ from Pipeline import Pipeline
 from read_dataset.readKaplanData import StoryDataReader
 from computational_model.text_encoder import ElmoEncoder
 from mapping_models.sk_mapper import SkMapper
+from evaluation.metrics import mean_explain_variance
 import logging
 
 
 # TODO: decide how to represent stories!!!
 data_dir = "/Users/lisa/Corpora/Kaplan_data/"
 save_dir = "/Users/lisa/Experiments/fmri/Kaplan/"
-load_previous = False
+load_previous = True
 
 if __name__ == '__main__':
   logging.basicConfig(level=logging.INFO)
@@ -27,6 +28,5 @@ if __name__ == '__main__':
 
   # Build the pipeline object
   experiment = Pipeline(kaplan_reader, stimuli_encoder, mapper, save_dir =save_dir)
-
   # Train and evaluate
   experiment.process()

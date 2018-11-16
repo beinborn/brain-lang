@@ -6,7 +6,7 @@ from read_dataset.readMitchellData import MitchellReader
 from computational_model.text_encoder import ElmoEncoder
 from mapping_models.sk_mapper import SkMapper
 import logging
-from evaluation.metrics import explained_variance
+from evaluation.metrics import mean_explain_variance
 load_previous = True
 data_dir = "/Users/lisa/Corpora/mitchell/"
 save_dir = "/Users/lisa/Experiments/fmri/Mitchell/"
@@ -26,6 +26,5 @@ if __name__ == '__main__':
     # Build the pipeline object
     experiment = Pipeline(mitchell_reader, stimuli_encoder, mapper, save_dir=save_dir)
     experiment.load_previous = load_previous
-    experiment.metrics = {'explained_variance': explained_variance}
     # Train and evaluate
     experiment.process()

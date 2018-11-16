@@ -33,6 +33,7 @@ class Pipeline(object):
 
         # TODO: how should we preprocess voxels: per block? Train and test separately? Does this make sense?
 
+
     def process(self):
 
         # Reading data
@@ -42,6 +43,8 @@ class Pipeline(object):
         # TODO find solution for alternative splits, eg. don't know yet how to split the alice data
         num_blocks = len(self.data_blocks.keys())
         if num_blocks >= 3:
+            all_predictions = []
+            all_targets = []
             for testblock in self.data_blocks.keys():
 
                 logging.info("Starting fold, testing on: " + str(testblock))
@@ -77,10 +80,6 @@ class Pipeline(object):
                     test_targets = np.asarray(test_embeddings)
                     logging.info("Training to predict text embeddings")
 
-                print(train_input)
-                print(train_targets)
-                print(train_input.shape)
-                print(train_targets.shape)
 
                 self.mapper.train(train_input, train_targets)
                 logging.info('Training completed.')
@@ -89,12 +88,18 @@ class Pipeline(object):
                 logging.info('Predicting voxel activations for test.')
                 logging.info("Length of test input: " + str(len(test_input)))
                 predictions = self.mapper.map(inputs=test_input, targets=test_targets)["predictions"]
+                all_predictions.extend(predictions)
+                all_targets.extend(test_targets)
 
-                logging.info("Length of predictions" + str(len(predictions)))
-
-                self.evaluate(predictions, test_targets)
-
+                if (len(predictions) >10):
+                    logging.info("Evaluating fold")
+                    self.evaluate(predictions, test_targets)
                 logging.info("End of fold")
+
+            logging.info("Evaluate all predictions")
+            self.evaluate(all_predictions, all_targets)
+
+
 
     def prepare_data(self, normalize_by_rest):
 
