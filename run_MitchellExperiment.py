@@ -1,12 +1,11 @@
 """Main file to run for training and evaluating the models.
 
 """
-from Pipeline import Pipeline
+from Single_Instance_Pipeline import Pipeline
 from read_dataset.readMitchellData import MitchellReader
 from computational_model.text_encoder import ElmoEncoder
 from mapping_models.sk_mapper import SkMapper
 import logging
-from evaluation.metrics import mean_explain_variance
 load_previous = True
 data_dir = "/Users/lisa/Corpora/mitchell/"
 save_dir = "/Users/lisa/Experiments/fmri/Mitchell/"

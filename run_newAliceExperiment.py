@@ -1,7 +1,7 @@
 """Main file to run for training and evaluating the models.
 
 """
-from Pipeline import Pipeline
+from Single_Instance_Pipeline import Pipeline
 from read_dataset.readAliceData import AliceDataReader
 from computational_model.text_encoder import ElmoEncoder
 from mapping_models.sk_mapper import SkMapper
@@ -26,6 +26,6 @@ if __name__ == '__main__':
     experiment = Pipeline(alice_reader, stimuli_encoder, mapper, save_dir=save_dir)
     experiment.load_previous = load_previous
     experiment.delay = 2
-    experiment.subject_ids = [18]
+    experiment.subject_ids = [18, 22]
     # Train and evaluate
-    experiment.process()
+    experiment.process("Alice_delay2")

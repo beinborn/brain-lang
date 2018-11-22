@@ -1,4 +1,4 @@
-from evaluation.metrics import  mse
+from evaluation.metrics import mse
 
 class BasicMapper(object):
   def __init__(self):

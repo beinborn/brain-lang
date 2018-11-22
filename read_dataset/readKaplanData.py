@@ -49,9 +49,9 @@ class StoryDataReader(FmriReader):
 
         blocks = {}
         for subject in subject_ids:
+            print(subject)
             blocks_for_subject = []
             for block_index in range(0, datamatrix.shape[1]):
-
                 stimulus_pointer = []
                 for sentence_id in range(0,len(stories[block_index])):
                     for word_id in range(0,len(stories[block_index][sentence_id])):

@@ -1,11 +1,10 @@
 """Main file to run for training and evaluating the models.
 
 """
-from Pipeline import Pipeline
+from Single_Instance_Pipeline import Pipeline
 from read_dataset.readKaplanData import StoryDataReader
 from computational_model.text_encoder import ElmoEncoder
 from mapping_models.sk_mapper import SkMapper
-from evaluation.metrics import mean_explain_variance
 import logging
 
 

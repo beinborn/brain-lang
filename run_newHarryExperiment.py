@@ -1,7 +1,7 @@
 """Main file to run for training and evaluating the models.
 
 """
-from Pipeline import Pipeline
+from Single_Instance_Pipeline import Pipeline
 from read_dataset.readHarryPotterData import HarryPotterReader
 from computational_model.text_encoder import ElmoEncoder
 from mapping_models.sk_mapper import SkMapper
@@ -10,7 +10,7 @@ import logging
 
 data_dir = "/Users/lisa/Corpora/HarryPotter/"
 save_dir = "/Users/lisa/Experiments/fmri/HarryPotter/"
-load_previous = True
+load_previous = False
 if __name__ == '__main__':
   logging.basicConfig(level=logging.INFO)
 

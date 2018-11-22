@@ -146,8 +146,8 @@ class HarryPotterReader(FmriReader):
         for voxel in range(0, roi_of_nth_voxel.shape[0]):
             roi = roi_of_nth_voxel[voxel]
             voxel_to_region[voxel] = roi_names[roi][0]
-        # for name in roi_names:
-        #  print(name[0])
+        #for name in roi_names:
+         # print(name[0])
         return voxel_to_region
 
 

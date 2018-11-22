@@ -2,33 +2,38 @@ import nilearn.signal
 import scipy
 import numpy as np
 
+from evaluation.metrics import explained_variance
 # METHODS TO REDUCE THE NUMBER OF VOXELS
 
 # This method removes voxels with stdev 0 from the data.
 # This is a necessary step before applying z-score.
 # However, it should be applied reasonably.
 # For example, it might not make much sense to first eliminate certain voxels and then do spatial smoothing or ROI selection.
-def ignore_constant_voxels(data):
-    print("Original shape: " + str(data.shape))
-    selected_columns = np.where(np.std(data,0)==0)
-    adjusted_data = np.delete(data, list(selected_columns), 1)
-    print("After eliminating columns" + str(adjusted_data.shape))
-    return adjusted_data
+def ignore_constant_voxels(train_activations):
+    selected_ids = np.where(abs(np.std(train_activations, 0)) > 0)[0]
+    return selected_ids.tolist()
 
-def select_voxels_by_variance(data):
-    # TODO Samira, you already had a function for this, right?
-    raise NotImplementedError()
 
-def apply_PCA(data):
-    # TODO add function for PCA
-    raise NotImplementedError()
+#TODO not yet tested
+def select_voxels_by_variance(train_predictions, train_targets, n):
+    # TODO Make sure that this selection is ONLY performed on the train_sets
+    # calculate explained variance
+    ev_per_voxel = explained_variance(train_predictions, train_targets)
+    # get ids for  n most predictive voxels
+    topn_voxels_ids = sorted(range(len(ev_per_voxel)), key = lambda i : ev_per_voxel[i])[-n:]
+    print(topn_voxels_ids)
+    # return list of ids of voxels
+    return topn_voxels_ids
+
 
 # TODO not yet tested
-def region_of_interest_averaging(voxel_activations, voxel_to_region_mapping, regions_of_interest):
-    roi_activation = []
-    for roi in regions_of_interest:
-        roi_voxels = []
-        for voxel in voxel_activations:
-            if voxel_to_region_mapping[voxel] in regions_of_interest:
-                roi_voxels.append(voxel)
-        roi_activation.append(np.average(roi_voxels))
+def select_voxels_by_roi(voxel_activations, voxel_to_region_mapping, regions_of_interest):
+    roi_voxels = []
+
+    for index in range(0, len(voxel_activations)):
+
+        if voxel_to_region_mapping[index] in regions_of_interest:
+            roi_voxels.append(index)
+            print(index)
+    print(roi_voxels)
+    return roi_voxels

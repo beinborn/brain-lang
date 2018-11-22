@@ -47,7 +47,7 @@ class Block(object):
         :return:
           context (list of tokens), indexes of stimuli in the context
         """
-        if len(scan_event.stimulus_pointer) > 0:
+        if len(scan_event.stimulus_pointers) > 0:
             sentence_indexes, token_indexes = list(zip(*scan_event.stimulus_pointer))
             current_sentence_index_start = scan_event.stimulus_pointer[0][0]
             current_sentence_index_end = scan_event.stimulus_pointer[-1][0]

@@ -41,11 +41,7 @@ class AliceDataReader(FmriReader):
             for scan in scans:
                 pointers_for_scan = [pointer for (word_time, pointer) in stimuli_pointers if
                                      word_time < scan_time and word_time > last_scan_time]
-                if len(pointers_for_scan)>0:
-                    current_sent = pointers_for_scan[0][0]
-                    if not (current_sent == previous_sent):
-                        print("Sentence boundary at scan boundary: " + str(sentences[current_sent]))
-                    previous_sent = pointers_for_scan[-1][0]
+
                 scan_event = ScanEvent(subject_id, pointers_for_scan, scan_time, scan)
                 last_scan_time = scan_time
                 scan_time += 2
