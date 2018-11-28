@@ -95,7 +95,7 @@ class ElmoEncoder(TextEncoder):
         token_layer_embeddings = [embedding[0] for embedding in word_embeddings[:]]
 
     # According to the code, forward lstm and backward lstm are concatenated.
-     # By using only the first half ot eh dimensions, I assume that I am using only the forward lm.
+     # By using only the first half of the dimensions, I assume that I am using only the forward lm.
         if self.only_forward:
             forward_embeddings = []
             for sentence_embedding in token_layer_embeddings:

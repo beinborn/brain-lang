@@ -14,14 +14,14 @@ def ignore_constant_voxels(train_activations):
     return selected_ids.tolist()
 
 
-#TODO not yet tested
+
 def select_voxels_by_variance(train_predictions, train_targets, n):
-    # TODO Make sure that this selection is ONLY performed on the train_sets
+    # Make sure that this selection is ONLY performed on the train_sets!
     # calculate explained variance
     ev_per_voxel = explained_variance(train_predictions, train_targets)
     # get ids for  n most predictive voxels
     topn_voxels_ids = sorted(range(len(ev_per_voxel)), key = lambda i : ev_per_voxel[i])[-n:]
-    print(topn_voxels_ids)
+
     # return list of ids of voxels
     return topn_voxels_ids
 

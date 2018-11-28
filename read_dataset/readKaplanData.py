@@ -23,11 +23,13 @@ class StoryDataReader(FmriReader):
         super(StoryDataReader, self).__init__(data_dir)
 
     def read_all_events(self, subject_ids=None, **kwargs):
+
         self.language = kwargs.get("language", "english")
         datafile = self.data_dir + "30_" + self.language + "_storydata_masked.hd5"
 
         data = h5py.File(datafile, 'r')
         datamatrix = np.array(data["__unnamed__"][()])
+
         stimulifile = self.data_dir + '/StoryKey.xlsx'
         stimuli = load_workbook(stimulifile).active
         if subject_ids == None:
@@ -48,8 +50,8 @@ class StoryDataReader(FmriReader):
             stories.append(sentences)
 
         blocks = {}
+
         for subject in subject_ids:
-            print(subject)
             blocks_for_subject = []
             for block_index in range(0, datamatrix.shape[1]):
                 stimulus_pointer = []

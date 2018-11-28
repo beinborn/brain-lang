@@ -29,10 +29,9 @@ class SingleInstancePipeline(object):
         self.save_dir = save_dir
         self.load_previous = False
         self.voxel_to_region_mappings = {}
-        # TODO: how should we preprocess voxels: per block? Train and test separately? Does this make sense?
+        self.metrics = {'Average explained variance': mean_explained_variance, "Sum explained variance": sum_explained_variance,"Mean explained variance for top 50": mean_ev_for_topn, "Average r2 score": mean_r2, "Sum r2 score": sum_r2, "Mean r2 for top 50": mean_r2_for_topn}
 
     def process(self, experiment_name):
-
         # Reading data
         self.prepare_data(experiment_name)
 
@@ -42,73 +41,112 @@ class SingleInstancePipeline(object):
             subject_data = self.data[subject_id]
             # Careful! They call it cross-validation, but every scan is in the testset n times
             # n = number of scans
+            self.evaluate_crossvalidation(subject_id, subject_data, experiment_name)
             self.evaluate_leave_two_out_procedure(subject_id, subject_data, experiment_name)
-        # self.crossvalidate()
-        #     # TODO: This way we might have a different number of voxels in each fold!
-        #     # Does this make sense?
-        #
-        #     if len(self.roi) >0 :
-        #         interesting_ids = select_voxels_by_roi(train_data, self.voxel_to_region_mapping, self.roi)
-        #
-        #     else:
-        #         interesting_ids = self.select_interesting_voxels(train_data, train_predictions, train_targets)
-        #
-        #
-        #     test_data = test_data[interesting_ids]
-        #     test_target = test_targets[interesting_ids]
 
-        #
-        #     logging.info("End of cross-validation. Evaluate all predictions")
-        #
-        # print("Length of predictions: " + str(len(predictions[0])))
-        # #for selection in interesting_voxel_ids:
-        #  #   predictions = predictions[selection]
-        #  #   test_targets = test_targets[selection]
-        # print("Length of selected predictions: " + str(len(predictions[0])))
-        #
-        # # TODO add method for searchlight analysis
-        # # TODO write evaluation to save_dir/experiment_name
-        # self.evaluate(np.asarray(predictions),
-        #               np.asarray(test_targets))
 
-    # def crossvalidate(self, subject_data):
+
+    def evaluate_crossvalidation(self, subject_id, subject_data, experiment_name):
+        # Split into folds so that we have 10 scans per fold
+        # We do not make it 10 folds because folds should be bigger to evaluate explained variance
+        number_of_folds = int(len(subject_data[0]) / 10)
+        collected_results = {}
+
+        for fold in range(0, number_of_folds):
+            start = fold * 10
+            end = fold * 10 + 10
+            testids = list(range(start, end))
+            print("Starting fold: " + str(fold))
+            print(testids)
+            # Not sure if this works
+            test_stimuli = [subject_data[2][i] for i in testids]
+            print(testids, test_stimuli)
+            train_data, train_targets, test_data, test_targets = self.prepare_fold(subject_data, testids)
+
+            logging.info("Select voxels on the training data")
+            selected_voxels = self.select_interesting_voxels(train_data, train_targets, subject_id,
+                                                             test_stimuli)
+
+            # Reduce the scans and the predictions to the interesting voxels
+            if self.task_is_text2brain:
+                train_targets = self.reduce_voxels(train_targets, selected_voxels)
+                test_targets = self.reduce_voxels(test_targets, selected_voxels)
+            else:
+                train_data = self.reduce_voxels(train_data, selected_voxels)
+                test_data = self.reduce_voxels(test_data, selected_voxels)
+
+            logging.info('Training completed. Training loss: ')
+            self.mapper.train(train_data, train_targets)
+
+            test_predictions = self.mapper.map(inputs=test_data, targets=test_targets)["predictions"]
+
+            current_results = self.evaluate_fold(test_predictions, test_targets)
+            print("Results for current fold: ")
+            print(str(current_results))
+            for key, value in current_results.items():
+
+                if key in collected_results.keys():
+                    results = collected_results[key]
+                    results.append(value)
+                    collected_results[key] = results
+                else:
+                    collected_results[key] = [value]
+        print("Results for all folds")
+        print(str(collected_results))
+
+
+        evaluation_file = self.save_dir + experiment_name +  "/evaluation_" + str(
+            subject_id) + "_standard_cv .txt"
+        logging.info("Writing evaluation to " + evaluation_file)
+        os.makedirs(os.path.dirname(evaluation_file), exist_ok=True)
+        with open(evaluation_file, "w") as eval_file:
+            eval_file.write(experiment_name + "\n")
+            eval_file.write(str(subject_id) + "\n")
+            for key, values in collected_results.items():
+                eval_file.write(str(key) + "\t")
+                for value in values:
+                    eval_file.write(str(value) + "\t")
+                eval_file.write("\n")
+
+        logging.info("Experiment completed.")
+
+
 
     def evaluate_leave_two_out_procedure(self, subject_id, subject_data, experiment_name):
         collected_matches = {}
         pairs = 0
         logging.info("Start leave-two out procedure")
-        # Start cross-validation
-        # for i in range(0, len(subject_data[0])):
-        #    for k in range(0, len(subject_data[0])):
-        interesting_voxel_ids = []
+
         for i in range(0, len(subject_data[0])):
-            for k in range(i+1, len(subject_data[0])):
+            for k in range(i + 1, len(subject_data[0])):
                 logging.info("Evaluate on pair " + str(pairs))
-                test_stimuli = subject_data[2][i][0], subject_data[2][k][0]
+                test_stimuli = [subject_data[2][i][0], subject_data[2][k][0]]
                 print(test_stimuli)
                 train_data, train_targets, test_data, test_targets = self.prepare_fold(subject_data, [i, k])
                 if not len(test_data) == 2 or not len(test_targets) == 2:
                     raise RuntimeError(
-                        "Something went wrong with preparing the test data: " + str(len(test_data)) + " " + str(len(test_targets)))
-
-                self.mapper.train(train_data, train_targets)
-                logging.info('Training completed. Training loss: ')
-
-                train_predictions = self.mapper.map(inputs=train_data, targets=train_targets)["predictions"]
+                        "Something went wrong with preparing the test data: " + str(len(test_data)) + " " + str(
+                            len(test_targets)))
 
                 logging.info("Select voxels on the training data")
-                selected_voxels = self.select_interesting_voxels(train_predictions, train_targets, subject_id,
+                selected_voxels = self.select_interesting_voxels(train_data, train_targets, subject_id,
                                                                  test_stimuli)
 
-                # As the model treats every voxel as an independent feature (which is probably not reasonable),
-                # We do not have to retrain it after voxel selection.
+                # Reduce the scans and the predictions to the interesting voxels
+                if self.task_is_text2brain:
+                    train_targets = self.reduce_voxels(train_targets, selected_voxels)
+                    test_targets = self.reduce_voxels(test_targets, selected_voxels)
+                else:
+                    train_data = self.reduce_voxels(train_data, selected_voxels)
+                    test_data = self.reduce_voxels(test_data, selected_voxels)
+
+                logging.info('Training completed. Training loss: ')
+                self.mapper.train(train_data, train_targets)
+
                 test_predictions = self.mapper.map(inputs=test_data, targets=test_targets)["predictions"]
                 if not len(test_predictions) == 2:
                     raise RuntimeError("Something went wrong with the prediction")
 
-                # Reduce the scans and the predictions to the interesting voxels
-                test_targets = self.reduce_voxels(test_targets, interesting_voxel_ids)
-                test_predictions = self.reduce_voxels(test_predictions, interesting_voxel_ids)
                 pairs += 1
 
                 matches = pairwise_matches(test_predictions[0], test_targets[0],
@@ -121,12 +159,13 @@ class SingleInstancePipeline(object):
                         collected_matches[key] = value + previous_matches
                     else:
                         collected_matches[key] = value
-
-        evaluation_file = self.save_dir + "/evaluation_" + experiment_name + "_" + subject_id + ".txt"
+                print(str(collected_matches))
+        evaluation_file = self.save_dir +  experiment_name +"/evaluation_" + str(subject_id) + "_2x2.txt"
         logging.info("Writing evaluation to " + evaluation_file)
+        os.makedirs(os.path.dirname(evaluation_file), exist_ok=True)
         with open(evaluation_file, "w") as eval_file:
             eval_file.write(experiment_name + "\n")
-            eval_file.write(subject_id + "\n")
+            eval_file.write(str(subject_id) + "\n")
             for key, value in collected_matches.items():
                 eval_file.write(str(key) + "\t" + str(value) + "\n")
 
@@ -170,8 +209,8 @@ class SingleInstancePipeline(object):
             with open(datafile, 'rb') as handle:
                 self.data = pickle.load(handle)
         else:
-            all_blocks = self.brain_data_reader.read_all_events(subject_ids=self.subject_ids)
 
+            all_blocks = self.brain_data_reader.read_all_events(subject_ids=self.subject_ids)
             for subject in all_blocks.keys():
                 logging.info("Preparing data for subject " + str(subject))
                 stimuli = []
@@ -207,8 +246,7 @@ class SingleInstancePipeline(object):
             scans = voxel_preprocessing_fn(scans, **args)
         return scans
 
-    # TODO: if we select voxels in each fold, we have different voxels in each prediction and cannot calculate explained variance over the whole test set!
-    def select_interesting_voxels(self, train_predictions, train_targets, subject_id, test_stimuli,
+    def select_interesting_voxels(self, train_data, train_targets, subject_id, test_stimuli,
                                   number_of_selected_voxels=500):
         # Hypothesis-driven selection
         if len(self.roi) > 0:
@@ -217,26 +255,37 @@ class SingleInstancePipeline(object):
         # Data-driven selection on the training data
         else:
             # Mitchell calculates stability over several scans for the same word
-            if isinstance(self.brain_data_reader, MitchellReader):
-                return self.brain_data_reader.get_stable_voxels(subject_id, test_stimuli)
+            # if isinstance(self.brain_data_reader, MitchellReader):
+            #     return self.brain_data_reader.get_stable_voxels(subject_id, test_stimuli)
+            #
+            # # As an alternative, we use the n voxels with the highest explained variance on the training data
+            # else:
 
-            # As an alternative, we use the n voxels with the highest explained variance on the training data
+            varied_voxels = ignore_constant_voxels(train_targets)
+            if self.task_is_text2brain:
+                train_targets = self.reduce_voxels(train_targets, varied_voxels)
             else:
-                varied_voxels = ignore_constant_voxels(train_targets)
-                predictive_voxels = select_voxels_by_variance(train_predictions, train_targets,
-                                                              number_of_selected_voxels)
-                # return intersection
-                return sorted(list(set(varied_voxels) & set(predictive_voxels)))
+                train_data = self.reduce_voxels(train_data, varied_voxels)
+
+            self.mapper.train(train_data, train_targets)
+
+            train_predictions = self.mapper.map(inputs=train_data)["predictions"]
+
+            predictive_voxels = select_voxels_by_variance(train_predictions, train_targets,
+                                                          number_of_selected_voxels)
+            # return intersection
+            return sorted(list(set(varied_voxels) & set(predictive_voxels)))
+
 
     def reduce_voxels(self, list_of_scans, interesting_voxel_ids):
-
         reduced_list = np.asarray([list(scan[interesting_voxel_ids]) for scan in list_of_scans])
 
         return reduced_list
 
-    # def evaluate(self, predictions, targets):
-    #     # TODO this function should return something!
-    #     logging.info("Evaluating...")
-    #     for metric_name, metric_fn in self.metrics.items():
-    #         metric_eval = metric_fn(predictions, targets)
-    #         print(metric_name, ":", metric_eval)
+    def evaluate_fold(self, predictions, targets):
+#     # TODO this function should return something!
+        logging.info("Evaluating...")
+        results ={}
+        for metric_name, metric_fn in self.metrics.items():
+            results[metric_name] = metric_fn(predictions, targets)
+        return results

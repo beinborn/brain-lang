@@ -1,7 +1,7 @@
 """Main file to run for training and evaluating the models.
 
 """
-from Single_Instance_Pipeline import Pipeline
+from ContinuousStimuli_Pipeline import Pipeline
 from read_dataset.readHarryPotterData import HarryPotterReader
 from computational_model.text_encoder import ElmoEncoder
 from mapping_models.sk_mapper import SkMapper

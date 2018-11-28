@@ -1,5 +1,6 @@
 from sklearn.metrics import mean_squared_error
 from sklearn.metrics import explained_variance_score
+from sklearn.metrics import r2_score
 from sklearn import preprocessing
 import numpy as np
 import itertools
@@ -53,24 +54,22 @@ def pairwise_matches(prediction1, target1, prediction2, target2):
 #     match2 = cosine_similarity(prediction2, target2) > cosine_similarity(prediction2, target1)
 #
 #     return match1 , match2
+
 def first_order_rdm(data, distance_metric):
     RDMs = []
     for i in range(len(data)):
-        print(data[i])
-        RDM = sp.distance.cdist(np.asarray(data[i]), np.asarray(data[i]), distance_metric)
-        RDMs.append(RDM)
+      RDM = sp.distance.cdist(np.asarray(condition_data[i]),np.asarray(condition_data[i]), distance_metric)
+      RDMs.append(RDM)
     return RDMs
-
 
 def second_order_rdm(RDMs):
     flat = [m.flatten(1) for m in RDMs]
     flat = np.array(flat).transpose()
     c_matrix = spearmanr(flat)[0]
-    if not (isinstance(c_matrix, np.ndarray)):
-        c_matrix = np.array([[1, c_matrix], [c_matrix, 1]])
+    if not(isinstance(c_matrix, np.ndarray)):
+        c_matrix = np.array([[1,c_matrix],[c_matrix,1]])
     RDM = np.ones(c_matrix.shape) - c_matrix
     return RDM
-
 
 def delete_constant_rows(predictions, targets):
     index = 0
@@ -85,6 +84,13 @@ def delete_constant_rows(predictions, targets):
     return predictions, targets
 
 
+def plot_RDM(RDMs):
+
+        fig, ax = plt.subplots(figsize=(7, 5))
+        ax = sns.heatmap(RDMs, cmap='Spectral', xticklabels=['s1', 's2', 's3', 's4', 's5', 's6', 's7', 's8', 'embeds'],
+                         yticklabels=['s1', 's2', 's3', 's4', 's5', 's6', 's7', 's8', 'embeds'], ax=ax)
+        ax.set_title("Correlated distances between scans and embedding matrices")
+        # fig.savefig("plots/RDM_2nd_order.png", bbox_inches='tight',dpi=250)
 ### EVALUATION METHODS ###
 
 def cosine_similarity(vector1, vector2):
@@ -100,17 +106,32 @@ def pearson_correlation(vector1,vector2):
 
 
 def explained_variance(predictions, targets, multioutput="raw_values"):
-    processed_preds, processed_targets = delete_constant_rows(predictions, targets)
+    return explained_variance_score(predictions, targets, multioutput=multioutput)
 
-    return explained_variance_score(processed_targets, processed_preds, multioutput=multioutput)
 
+def sum_explained_variance(predictions, targets):
+    ev_scores = explained_variance(predictions, targets, multioutput="raw_values")
+    return np.sum(np.asarray(ev_scores))
 
 def mean_explained_variance(predictions, targets):
     return explained_variance(predictions, targets, multioutput="uniform_average")
 
+def sum_r2(predictions, targets):
+     r2values = r2_score(predictions, targets,  multioutput="raw_values")
+     return np.sum(np.asarray(r2values))
 
 
+def mean_r2(predictions, targets):
+    return r2_score(predictions, targets, multioutput="uniform_average")
 
+def mean_r2_for_topn(predictions, targets, n = 50):
+    r2values = r2_score(predictions, targets, multioutput="raw_values")
+    top_n = sorted(r2values, reverse = True)[0:n]
+    return np.mean(np.asarray(top_n))
+def mean_ev_for_topn(predictions, targets, n = 50):
+    evvalues = explained_variance(predictions, targets, multioutput="raw_values")
+    top_n = sorted(evvalues, reverse = True)[0:n]
+    return np.mean(np.asarray(top_n))
 
 # TODO not yet working, debug
 def representational_similarity_analysis(scans, embeddings, distance_metric='cosine'):
@@ -123,15 +144,7 @@ def representational_similarity_analysis(scans, embeddings, distance_metric='cos
     # correlation between distance vectors in similarity metrics
     RDM = second_order_rdm(RDMS)
 
-    # TODO not tested! Double-check if this is correctly implemented!
-    calc_correct = 0
-    max_correlation = np.argmax(RDM, axis=1)
 
-    for row_index in range(0, RDM.shape[0]):
-        if (max_correlation[row_index] == row_index):
-            calc_correct += 1
-
-    return calc_correct / float(len(scans))
 
 
 ### HAVE NOT LOOKED AT THIS YET ####

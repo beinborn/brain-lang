@@ -29,7 +29,10 @@ class Pipeline(object):
         self.task_is_text2brain = True
         self.voxel_preprocessings = []
         # [(detrend, {'t_r': 2.0})]
-        self.metrics = {'Average explained variance': mean_explained_variance, "2x2 accuracy": binary_accuracy}
+        self.metrics = {'Average explained variance': mean_explained_variance,
+                        "Sum explained variance": sum_explained_variance,
+                        "Mean explained variance for top 50": mean_ev_for_topn, "Average r2 score": mean_r2,
+                        "Sum r2 score": sum_r2, "Mean r2 for top 50": mean_r2_for_topn}
         self.save_dir = save_dir
         self.load_previous = False
         self.voxel_to_region_mappings = {}
@@ -51,6 +54,8 @@ class Pipeline(object):
             else:
                 # We cannot split the alice data into blocks, so we do cross-validation over scans.
                 # Does not seem very smart, but I couldn't come up with a better solution.
+                # TODO: add splits at predefined breakpoints!
+                #self.brain_data_reader.get_split_points
                 logging.info("Collect predictions per scan")
                 predictions, test_targets = self.get_predictions_per_scan(subject_blocks[1])
 
