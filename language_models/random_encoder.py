@@ -14,15 +14,18 @@ class RandomEncoder(object):
         self.embedding_dir = embedding_dir
         self.dimensions = 512
         self.load_previous = load_previous
-        #TODO: if embedding dir contains word_dict.pickle, load it
         self.dict_file = self.embedding_dir + name +"/random_word_dict.pickle"
         self.dict = {}
+
+        # Set the seed to make experiments reproducible.
+        self.seed = 5
+        np.random.seed(self.seed)
         if os.path.isfile(self.dict_file) :
             with open(self.dict_file, 'rb') as handle:
                 self.dict = pickle.load(handle)
 
     def get_word_embeddings(self, name, words):
-        embedding_file = self.embedding_dir + name + "/sentence_embeddings.pickle"
+        embedding_file = self.embedding_dir + name + "/word_embeddings.pickle"
         if self.load_previous:
             logging.info("Loading embeddings from " + embedding_file)
             with open(embedding_file, 'rb') as handle:

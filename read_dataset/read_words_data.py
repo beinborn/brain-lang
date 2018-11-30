@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.io
 from .scan_elements import Block, ScanEvent
-from .FmriReader import FmriReader
+from .read_fmri_data_abstract import FmriReader
 from scipy.stats.stats import pearsonr
 import os.path
 import pickle
@@ -51,7 +51,7 @@ class MitchellReader(FmriReader):
         return blocks
 
     def get_voxel_to_region_mapping(self, subject_id):
-        roi_file = self.data_dir + "roi_mapping/roi_P" + str(subject_id) + ".txt"
+        roi_file = self.data_dir + "additional_data/mitchell_roi_mapping/roi_P" + str(subject_id) + ".txt"
         #print(roi_file)
         roi_mapping = {}
         voxel_index = 0
