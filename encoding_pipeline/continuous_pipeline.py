@@ -2,9 +2,8 @@
 """
 
 from evaluation.metrics import *
-from voxel_preprocessing.preprocess_voxels import detrend
-from voxel_preprocessing.preprocess_voxels import minus_average_resting_states
-from encoding_pipeline.Pipeline import Pipeline
+from evaluation.evaluation_util import *
+from encoding_pipeline.pipeline import Pipeline
 import numpy as np
 import pickle
 import os
@@ -17,23 +16,23 @@ class ContinuousPipeline(Pipeline):
 
     def __init__(self, brain_data_reader, stimuli_encoder, mapper, save_dir="processed_data/"):
         super(ContinuousPipeline, self).__init__(brain_data_reader, stimuli_encoder, mapper, save_dir)
-        self.metrics = {"Average r2 score": mean_r2, "Sum r2 score": sum_r2, "Mean r2 for top 50": mean_r2_for_topn}
-        self.voxel_preprocessings = [(detrend, {'t_r': 2.0})]
+
         # Delay is measured in TRs, a delay of 2 means that we align stimulus 1 with scan 3.
         self.delay = 2
 
     def process(self, experiment_name):
 
         # Reading data
-        self.prepare_data(False, experiment_name)
+        self.prepare_data()
         # Iterate over subjects
-        for subject_id in self.subject_ids:
+        for subject_id in self.data.keys():
             print("Start processing for SUBJECT: " + str(subject_id))
             subject_data = self.data[subject_id]
             self.evaluate_crossvalidation(subject_id, subject_data, experiment_name)
 
     def evaluate_crossvalidation(self, subject_id, subject_blocks, experiment_name):
         collected_results = {}
+        collected_matches = {}
         num_blocks = len(subject_blocks.keys())
         if num_blocks >= 2:
             testkeys = subject_blocks.keys()
@@ -41,14 +40,26 @@ class ContinuousPipeline(Pipeline):
         else:
             testkeys, all_blocks = self.split_data(subject_blocks)
 
+        fold = 1
         for testkey in testkeys:
+            logging.info("Starting fold " + str(fold))
             train_data, train_targets, test_data, test_targets = self.prepare_fold(testkey, all_blocks)
             logging.info("Select voxels on the training data")
-            selected_voxels = self.select_interesting_voxels(train_data, train_targets, subject_id)
+            #test_targets, _ = self.voxel_selection(test_brain_activations, fit=False)
+            #test_targets, selected_voxels = self.post_train_voxel_selection(test_brain_activations)
+            #self.eval_mapper(mapper, test_encoded_stimuli, test_brain_activations)
+
+            selected_voxels = self.select_interesting_voxels(train_data, train_targets,experiment_name,  500)
 
             # Reduce the scans and the predictions to the interesting voxels
+            print("Shape before")
+            print(train_targets.shape)
+            print(test_targets.shape)
             train_targets = self.reduce_voxels(train_targets, selected_voxels)
             test_targets = self.reduce_voxels(test_targets, selected_voxels)
+            print("Shape after reduction")
+            print(train_targets.shape)
+            print(test_targets.shape)
 
             logging.info('Training completed. Training loss: ')
             self.mapper.train(train_data, train_targets)
@@ -57,17 +68,27 @@ class ContinuousPipeline(Pipeline):
 
             current_results = self.evaluate_fold(test_predictions, test_targets)
 
-            print("Results for current fold: ")
-            print(str(current_results))
+            print("Results for fold " + str(fold))
+            print(str(current_results["R2"][1]))
+            collected_results = update_results(current_results, collected_results)
 
-            collected_results = self.update_collected_results(current_results, collected_results)
-            print("Results for all folds")
-            print(str(collected_results))
+            pairwise_matches = pairwise_accuracy_randomized(test_predictions, test_targets, 1)
+            for key, value in pairwise_matches.items():
+                print(key, value / float(len(test_predictions)))
+            collected_matches = add_to_collected_results(pairwise_matches, collected_matches)
+            fold += 1
+        print("Results for all folds")
 
-            # TODO calculate mean over collected results, save both
-            logging.info("Writing evaluation")
-            self.save_evaluation(experiment_name, subject_id, collected_results)
-            logging.info("Experiment completed.")
+        evaluation_path = self.save_dir + self.pipeline_name + "/evaluation_" + str(
+            subject_id) +  experiment_name +"_standard_cv.txt"
+        logging.info("Writing evaluation to " + evaluation_path)
+        self.save_evaluation(evaluation_path, self.pipeline_name, subject_id, collected_results)
+
+        pairwise_evaluation_file = self.save_dir + self.pipeline_name + "/evaluation_" + str(subject_id) +  experiment_name +"_2x2.txt"
+        logging.info("Writing evaluation to " + pairwise_evaluation_file)
+        self.save_pairwise_evaluation(pairwise_evaluation_file, self.pipeline_name, subject_id, collected_matches,
+                                      len(train_targets) + len(test_targets))
+        logging.info("Experiment completed.")
 
     def prepare_fold(self, testblock, subject_blocks):
         train_scans = []
@@ -125,8 +146,8 @@ class ContinuousPipeline(Pipeline):
             stimulus_number += 1
         return splitted_data.keys(), splitted_data
 
-    def prepare_data(self, normalize_by_rest, experiment_name):
-        datafile = self.save_dir + "data/delay" + str(self.delay) + "/aligned_data.pickle"
+    def prepare_data(self):
+        datafile = self.save_dir + self.pipeline_name + "/aligned_data.pickle"
 
         if self.load_previous:
             logging.info("Loading from " + datafile)
@@ -146,7 +167,7 @@ class ContinuousPipeline(Pipeline):
                     sentences = block.sentences
                     logging.info("Get sentence embeddings")
                     sentence_embeddings = self.stimuli_encoder.get_sentence_embeddings(
-                        experiment_name + "_" + str(block.block_id), sentences)
+                        self.pipeline_name + "/" + str(block.block_id) + "_", sentences)
                     logging.info("Sentence embeddings obtained")
                     scans = [event.scan for event in block.scan_events]
 
@@ -157,8 +178,84 @@ class ContinuousPipeline(Pipeline):
                             len(stimulus_embeddings)))
                     logging.info("Align data with delay")
                     self.data[subject][block.block_id] = self.align_representations(scans, stimulus_embeddings,
-                                                                                    self.delay,
-                                                                                    normalize_by_rest)
+                                                                                    self.delay)
+                    logging.info("Data is aligned")
+
+                    os.makedirs(os.path.dirname(datafile), exist_ok=True)
+                    with open(datafile, 'wb') as handle:
+                        pickle.dump(self.data, handle)
+
+    def prepare_data_incremental_embeddings(self):
+        datafile = self.save_dir + self.pipeline_name + "/aligned_data.pickle"
+
+        if self.load_previous:
+            logging.info("Loading from " + datafile)
+            with open(datafile, 'rb') as handle:
+                self.data = pickle.load(handle)
+        else:
+            all_blocks = self.brain_data_reader.read_all_events(subject_ids=self.subject_ids)
+
+            for subject in all_blocks.keys():
+                blocks = all_blocks[subject]
+                self.data[subject] = {}
+                logging.info("Preparing data for subject " + str(subject))
+                for block in blocks:
+                    logging.info("Preparing block " + str(block.block_id))
+
+                    self.voxel_to_region_mappings[subject] = block.voxel_to_region_mapping
+                    sentences = block.sentences
+                    logging.info("Get sentence embeddings")
+                    stimuli = []
+                    for event in block.scan_events:
+                        pointers = np.asarray(event.stimulus_pointers)
+                        sentence_ids = set(pointers[:,0])
+                        if len(sentence_ids) == 0:
+                            stimuli.append(event.timestamp, [])
+                        elif len(sentence_ids)==1:
+                            last_token_id = pointers[-1][1]
+                            stimuli.append(event.timestamp, sentences[sentence_ids[0]][0:last_token_id])
+                        else:
+                            for sentence_id in sentence_ids:
+                                last_token_id = np.max([pointer[1] for pointer in pointers if pointer[0] == sentence_id ])
+                                stimuli.append(event.timestamp, sentences[sentence_id][0:last_token_id])
+                    print(stimuli)
+                    stimuli_for_embedder = np.asarray(stimuli)[:,1]
+                    sentence_embeddings = self.stimuli_encoder.get_sentence_embeddings(
+                        self.pipeline_name + "/" + str(block.block_id) + "_", stimuli_for_embedder)
+                    logging.info("Sentence embeddings obtained")
+                    print(len(stimuli) == len(sentence_embeddings))
+
+                    # Align timestamps and sentence embeddings. This is important if two sentences occur within one scan.
+                    aligned_stimuli = {}
+                    for i in range(0,len(sentence_embeddings)):
+                        timestamp = stimuli[i][0]
+                        embedding = sentence_embeddings[i]
+                        if timestamp in aligned_stimuli:
+                            collected_embeddings = aligned_stimuli[timestamp]
+                            collected_embeddings.append(embedding)
+                            aligned_stimuli[timestamp] = collected_embeddings
+                        else:
+                            aligned_stimuli[timestamp] = embedding
+
+                    scans = []
+                    embeddings = []
+                    for event in block.scan_events:
+                        scans.append(event.scan)
+                        aligned_embeddings = aligned_stimuli[event.timestamp]
+                        if len(aligned_embeddings)==0:
+                            embedding = []
+                        else:
+                            # Take the mean over the sentence embeddings
+                            embedding = np.mean(np.asarray(), axis = 0)
+                    embeddings.append(embedding)
+
+
+                    if not len(scans) == len(embeddings):
+                        raise ValueError("Lengths disagree, scans: " + str(len(scans)) + " embeddings: " + str(
+                            len(embeddings)))
+                    logging.info("Align data with delay")
+                    self.data[subject][block.block_id] = self.align_representations(scans, embeddings,
+                                                                                    self.delay)
                     logging.info("Data is aligned")
 
                     os.makedirs(os.path.dirname(datafile), exist_ok=True)
@@ -167,6 +264,7 @@ class ContinuousPipeline(Pipeline):
 
     def extract_stimulus_embeddings(self, sentence_embeddings, stimulus_pointers):
         stimulus_embeddings = []
+        print(np.asarray(sentence_embeddings).shape)
         for stimulus_pointer in stimulus_pointers:
             if len(stimulus_pointer) > 0:
                 token_embeddings = []
@@ -181,10 +279,10 @@ class ContinuousPipeline(Pipeline):
             else:
                 # I am returning the empty embedding if we do not have a stimulus. There might be smarter ways.
                 stimulus_embeddings.append([])
-
+        print(np.asarray(stimulus_embeddings).shape)
         return stimulus_embeddings
 
-    def align_representations(self, scans, embeddings, delay, normalize_by_resting):
+    def align_representations(self, scans, embeddings, delay):
         aligned_scans = []
         aligned_embeddings = []
 
@@ -200,8 +298,6 @@ class ContinuousPipeline(Pipeline):
 
         # I am simply deleting scans with empty stimuli so far, there might be a better solution.
         embeddings = embeddings[i:]
-        if normalize_by_resting:
-            trial_scans = minus_average_resting_states(trial_scans, resting_scans)
 
         for i in range(0, len(trial_scans)):
             if (i + delay) < len(embeddings) and not len(embeddings[i + delay]) == 0:
@@ -215,14 +311,7 @@ class ContinuousPipeline(Pipeline):
 
         return aligned_scans, aligned_embeddings
 
-    # TODO: can this go to the base class?
-    def update_collected_results(self, current_results, collected_results):
-        for key, value in current_results.items():
-
-            if key in collected_results.keys():
-                results = collected_results[key]
-                results.append(value)
-                collected_results[key] = results
-            else:
-                collected_results[key] = [value]
-        return collected_results
+    def select_interesting_voxels(self, stimuli, scans, experiment_name,
+                                  number_of_selected_voxels=500):
+        return super.select_interesting_voxels(self, stimuli, scans, experiment_name,
+                                  number_of_selected_voxels=500)

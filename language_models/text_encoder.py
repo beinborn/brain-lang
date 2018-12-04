@@ -1,8 +1,4 @@
-import tensorflow as tf
-import tensorflow_hub as hub
-from util.misc import pad_lists
 from allennlp.commands.elmo import ElmoEmbedder
-from language_preprocessing import tokenize
 import numpy as np
 import pickle
 import os
@@ -20,11 +16,11 @@ class TextEncoder(object):
 # They could be combined in a single method, but this way it is easier to adjust things.
 class ElmoEncoder(TextEncoder):
 
-    def __init__(self, embedding_dir, load_previous):
+    def __init__(self, embedding_dir, load_previous = False):
         super(ElmoEncoder, self).__init__(embedding_dir)
-        self.load_previous = load_previous
         self.layer_id = 1
         self.only_forward = True
+        self.embedder = None
         if not load_previous:
             self.embedder = ElmoEmbedder()
 
@@ -40,9 +36,9 @@ class ElmoEncoder(TextEncoder):
         # Layer 0 are token representations which are not sensitive to context
         # Layer 1 are representations from the first bilstm
         # Layer 2 are the representations from the second bilstm
-        # TODO: Usually one learns a weighted sum over the three layers. We should discuss what to use here
-        embedding_file = self.embedding_dir + name + "/sentence_embeddings.pickle"
-        if self.load_previous:
+
+        embedding_file = self.embedding_dir + name + "sentence_embeddings.pickle"
+        if os.path.isfile(embedding_file):
             logging.info("Loading embeddings from " + embedding_file)
             with open(embedding_file, 'rb') as handle:
                 sentence_embeddings = pickle.load(handle)
@@ -55,10 +51,10 @@ class ElmoEncoder(TextEncoder):
             with open(embedding_file, 'wb') as handle:
                 pickle.dump(sentence_embeddings, handle)
 
-    # Shape of sentence embeddings: ( number of sentences,3, 1024)
-
+        print(len(sentence_embeddings))
+        print(len(sentences))
         if not len(sentence_embeddings) == len(sentences):
-            raise RuntimeError("Something went wrong with the embedding")
+            logging.info("Something went wrong with the embedding. Number of embeddings: " + str(len(sentence_embeddings)) + " Number of sentences: " + str(len(sentences)))
 
         single_layer_embeddings = [embedding[self.layer_id] for embedding in sentence_embeddings[:]]
 
@@ -74,8 +70,8 @@ class ElmoEncoder(TextEncoder):
 
     def get_word_embeddings(self, name, words):
 
-        embedding_file = self.embedding_dir +name + "/word_embeddings.pickle"
-        if self.load_previous:
+        embedding_file = self.embedding_dir +name + "word_embeddings.pickle"
+        if os.path.isfile(embedding_file):
             logging.info("Loading embeddings from " + embedding_file)
             with open(embedding_file, 'rb') as handle:
                 word_embeddings = pickle.load(handle)
@@ -107,8 +103,9 @@ class ElmoEncoder(TextEncoder):
 
 
     def get_story_embeddings(self, name,  stories, mode = "sentence_final"):
-        embedding_file = self.embedding_dir + name + "/story_embeddings.pickle"
-        if self.load_previous:
+        embedding_file = self.embedding_dir + name + "story_embeddings.pickle"
+        # Careful, if the file exists, I load it. Make sure to delete it, if I want to reencode.
+        if os.path.isfile(embedding_file):
             logging.info("Loading embeddings from " + embedding_file)
             with open(embedding_file, 'rb') as handle:
                 story_embeddings = pickle.load(handle)

@@ -1,9 +1,11 @@
 """Pipeline for predicting brain activations.
 """
 
-from evaluation.metrics import *
 
-from encoding_pipeline.Pipeline import Pipeline
+from encoding_pipeline.pipeline_utils import *
+from encoding_pipeline.pipeline import Pipeline
+from evaluation.metrics import *
+from evaluation.evaluation_util import *
 import numpy as np
 
 import pickle
@@ -14,19 +16,39 @@ logging.basicConfig(level=logging.INFO)
 
 
 class SingleInstancePipeline(Pipeline):
-    def __init__(self, brain_data_reader, stimuli_encoder, mapper, save_dir="processed_data/"):
-        super(SingleInstancePipeline, self).__init__(brain_data_reader, stimuli_encoder, mapper, save_dir)
-        self.metrics = {"Average r2 score": mean_r2, "Sum r2 score": sum_r2, "Mean r2 for top 50": mean_r2_for_topn}
+    def __init__(self, brain_data_reader, stimuli_encoder, mapper, pipeline_name, save_dir="processed_data/"):
+        super(SingleInstancePipeline, self).__init__(brain_data_reader, stimuli_encoder, mapper, pipeline_name, save_dir)
+        self.voxel_selection = "on_train_ev"
+        # # Example: [(detrend, {'t_r': 2.0})]
+        self.voxel_preprocessings = []
+        self.metrics = {"R2": r2_score_complex, "Explained Variance": explained_variance_complex,
+                         "Pearson": pearson_complex}
+        self.data = {}
+        # # Options for voxel selection are: "on_train_r", "on_train_ev"random", "by_roi", "stable" and "none"
+        self.voxel_selection ="on_train_r"
+        self.roi = []
+        self.save_dir = save_dir
+        self.voxel_to_region_mappings = {}
 
-    def process(self, experiment_name):
+    def standard_crossvalidation(self, experiment_name):
         # Reading data
-        self.prepare_data(experiment_name)
+        self.prepare_data()
 
         # Iterate over subjects
         for subject_id in self.data.keys():
             print("Start processing for SUBJECT: " + str(subject_id))
             subject_data = self.data[subject_id]
             self.evaluate_crossvalidation(subject_id, subject_data, experiment_name)
+
+
+    def pairwise_procedure(self, experiment_name):
+        # Reading data
+        self.prepare_data()
+
+        # Iterate over subjects
+        for subject_id in self.data.keys():
+            print("Start processing for SUBJECT: " + str(subject_id))
+            subject_data = self.data[subject_id]
             self.evaluate_leave_two_out_procedure(subject_id, subject_data, experiment_name)
 
     def evaluate_crossvalidation(self, subject_id, subject_data, experiment_name):
@@ -47,45 +69,31 @@ class SingleInstancePipeline(Pipeline):
             train_data, train_targets, test_data, test_targets = self.prepare_fold(subject_data, testids)
 
             logging.info("Select voxels on the training data")
-            selected_voxels = self.select_interesting_voxels(train_data, train_targets, subject_id)
-
+            selected_voxels = self.select_interesting_voxels(self.voxel_selection, train_data, train_targets, experiment_name,  500)
+            print("Number of selected voxels: " + str(len(selected_voxels)))
             # Reduce the scans and the predictions to the interesting voxels
+            logging.info('Voxel selection completed.')
+            train_targets = reduce_voxels(train_targets, selected_voxels)
+            test_targets = reduce_voxels(test_targets, selected_voxels)
 
-            train_targets = self.reduce_voxels(train_targets, selected_voxels)
-            test_targets = self.reduce_voxels(test_targets, selected_voxels)
 
-            logging.info('Training completed. Training loss: ')
             self.mapper.train(train_data, train_targets)
-
+            logging.info('Training completed. Training loss: ')
             test_predictions = self.mapper.map(inputs=test_data, targets=test_targets)["predictions"]
 
-            current_results = self.evaluate_fold(test_predictions, test_targets)
+            current_results = evaluate_fold(self.metrics, test_predictions, test_targets)
             print("Results for current fold: ")
-            print(str(current_results))
-            for key, value in current_results.items():
+            print(str(current_results["R2"][1]))
+            collected_results = update_results(current_results, collected_results)
 
-                if key in collected_results.keys():
-                    results = collected_results[key]
-                    results.append(value)
-                    collected_results[key] = results
-                else:
-                    collected_results[key] = [value]
 
         print("Results for all folds")
-        print(str(collected_results))
 
-        evaluation_file = self.save_dir + experiment_name + "/evaluation_" + str(
-            subject_id) + "_standard_cv .txt"
-        logging.info("Writing evaluation to " + evaluation_file)
-        os.makedirs(os.path.dirname(evaluation_file), exist_ok=True)
-        with open(evaluation_file, "w") as eval_file:
-            eval_file.write(experiment_name + "\n")
-            eval_file.write(str(subject_id) + "\n")
-            for key, values in collected_results.items():
-                eval_file.write(str(key) + "\t")
-                for value in values:
-                    eval_file.write(str(value) + "\t")
-                eval_file.write("\n")
+
+        evaluation_path = self.save_dir + self.pipeline_name + "/evaluation_" + str(
+            subject_id) + experiment_name + "_standard_cv .txt"
+        logging.info("Writing evaluation to " + evaluation_path)
+        save_evaluation(evaluation_path, experiment_name, subject_id, collected_results)
 
         logging.info("Experiment completed.")
 
@@ -107,43 +115,35 @@ class SingleInstancePipeline(Pipeline):
                             len(test_targets)))
 
                 logging.info("Select voxels on the training data")
-                selected_voxels = self.select_interesting_voxels(train_data, train_targets, subject_id)
+                if (self.voxel_selection =="stable"):
+                    selected_voxels = self.brain_data_reader.get_stable_voxels(test_stimuli[0])
+                else:
+                    selected_voxels = self.select_interesting_voxels(self.voxel_selection, train_data, train_targets, experiment_name, subject_id)
 
                 # Reduce the scans and the predictions to the interesting voxels
 
-                train_targets = self.reduce_voxels(train_targets, selected_voxels)
-                test_targets = self.reduce_voxels(test_targets, selected_voxels)
+                train_targets = reduce_voxels(train_targets, selected_voxels)
+                test_targets = reduce_voxels(test_targets, selected_voxels)
+                pairs += 1
+                logging.info('Training completed. Training loss: ')
+                self.mapper.train(train_data, train_targets)
 
-            logging.info('Training completed. Training loss: ')
-            self.mapper.train(train_data, train_targets)
-
-            test_predictions = self.mapper.map(inputs=test_data, targets=test_targets)["predictions"]
-            if not len(test_predictions) == 2:
-                raise RuntimeError("Something went wrong with the prediction")
-
-            pairs += 1
-
-            matches = pairwise_matches(test_predictions[0], test_targets[0],
-                                       test_predictions[1], test_targets[1])
-
-            for key, value in matches.items():
-
-                if key in collected_matches.keys():
-                    previous_matches = collected_matches[key]
-                    collected_matches[key] = value + previous_matches
-                else:
-                    collected_matches[key] = value
-            print(str(collected_matches))
+                test_predictions = self.mapper.map(inputs=test_data, targets=test_targets)["predictions"]
+                if not len(test_predictions) == 2:
+                    raise RuntimeError("Something went wrong with the prediction")
 
 
-        evaluation_file = self.save_dir + experiment_name + "/evaluation_" + str(subject_id) + "_2x2.txt"
+
+                matches = pairwise_matches(test_predictions[0], test_targets[0],
+                                           test_predictions[1], test_targets[1])
+                collected_matches = add_to_collected_results(matches, collected_matches)
+                print(str(collected_matches))
+
+
+        evaluation_file = self.save_dir + self.pipeline_name + "/evaluation_" + str(subject_id) + experiment_name + "_2x2.txt"
         logging.info("Writing evaluation to " + evaluation_file)
-        os.makedirs(os.path.dirname(evaluation_file), exist_ok=True)
-        with open(evaluation_file, "w") as eval_file:
-            eval_file.write(experiment_name + "\n")
-            eval_file.write(str(subject_id) + "\n")
-            for key, value in collected_matches.items():
-                eval_file.write(str(key) + "\t" + str(value) + "\n")
+        save_pairwise_evaluation(evaluation_file, self.pipeline_name, subject_id, collected_matches, pairs)
+
 
         logging.info("Experiment completed.")
 
@@ -163,8 +163,8 @@ class SingleInstancePipeline(Pipeline):
                 train_embeddings.append(embedding)
 
         # We are preprocessing the voxels separately for every fold
-        train_scans = self.preprocess_voxels(train_scans)
-        test_scans = self.preprocess_voxels(test_scans)
+        train_scans = preprocess_voxels(self.voxel_preprocessings, train_scans)
+        test_scans = preprocess_voxels(self.voxel_preprocessings, test_scans)
 
         # We could have a parameter here to switch scans and embeddings around for the decoding task
         train_data = train_embeddings
@@ -174,9 +174,9 @@ class SingleInstancePipeline(Pipeline):
 
         return np.asarray(train_data), np.asarray(train_targets), np.asarray(test_data), np.asarray(test_targets)
 
-    def prepare_data(self, name):
-        datafile = self.save_dir + name + "/aligned_data.pickle"
-        if self.load_previous:
+    def prepare_data(self):
+        datafile = self.save_dir + self.pipeline_name + "/aligned_data.pickle"
+        if os.path.isfile(datafile):
             logging.info("Loading from " + datafile)
             with open(datafile, 'rb') as handle:
                 self.data = pickle.load(handle)
@@ -191,12 +191,14 @@ class SingleInstancePipeline(Pipeline):
                     stimuli.append(block.sentences)
                     scans.append(block.scan_events[0].scan)
 
+                # Distinguish between getting embeddings for words and for stories.
+                # For other datasets, there might also be a need to get embeddings for sentences.
                 if max([len(x[0]) for x in stimuli]) == 1:
                     stimuli = [word[0] for word in stimuli]
                     print(stimuli)
-                    embeddings = self.stimuli_encoder.get_word_embeddings(name, stimuli)
+                    embeddings = self.stimuli_encoder.get_word_embeddings(self.pipeline_name + "/", stimuli)
                 else:
-                    embeddings = self.stimuli_encoder.get_story_embeddings(name, stimuli)
+                    embeddings = self.stimuli_encoder.get_story_embeddings(self.pipeline_name + "/", stimuli)
 
                 logging.info("Embeddings obtained")
 

@@ -4,36 +4,17 @@ import numpy as np
 
 ### METHODS APPLIED OVER ALL VOXELS
 
-def detrend(timeseries_datapoints, t_r, standardize=False):
-    return nilearn.signal.clean(timeseries_datapoints, sessions=None,
+def detrend(data, t_r, standardize=False):
+    return nilearn.signal.clean(data, sessions=None,
                          detrend=True, standardize=standardize,
                          confounds=None, low_pass=None,
                          high_pass=0.005, t_r=t_r, ensure_finite=False)
 
 
-# Transform voxel values into z-scores. (x-mean)/stdev
-# This only works if stdev is NOT 0. This is the case for constant voxels.
-def zscore(data):
-    zscores = scipy.stats.zscore(data)
-    if (np.isnan(zscores).any()):
-        raise ValueError("Data contains voxels with stdev 0")
-    else:
-        return zscores
+def reduce_mean(data):
+  return data - np.mean(data, axis=0)
 
 
-
-def minus_average_resting_states(timeseries_datapoints, brain_states_with_no_stimuli):
-  """
-  :param timeseries_datapoints:
-  :param brain_states_with_no_stimuli:
-  :return:
-  """
- # TODO does not seem to work
-  # For now we simply normalize by minusing the avg resting state.
-  average_brain_state_with_no_stimuli = np.mean(brain_states_with_no_stimuli, axis=-1)
-  timeseries_datapoints = timeseries_datapoints - average_brain_state_with_no_stimuli
-
-  return timeseries_datapoints
 
 # Wehbe et al apply a 5x5x5 Gaussian kernel.
 # According to the answer here https://stackoverflow.com/questions/25216382/gaussian-filter-in-scipy

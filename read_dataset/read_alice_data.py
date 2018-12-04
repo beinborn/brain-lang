@@ -4,7 +4,7 @@ from os import listdir
 from .scan_elements import Block, ScanEvent
 from .read_fmri_data_abstract import FmriReader
 from language_preprocessing.tokenize import SpacyTokenizer
-
+import os
 
 class AliceDataReader(FmriReader):
     def __init__(self, data_dir):
@@ -19,7 +19,12 @@ class AliceDataReader(FmriReader):
         stimuli = self.read_stimuli(text_dir)
         tokens = [word for (time, word) in stimuli]
         sentences, stimuli_pointers = self.get_pointers(stimuli)
-
+        print("Number of stimuli: " + str( len(stimuli)))
+        print(stimuli[:9])
+        print("Number of stimuli pointers: " + str(len(stimuli_pointers)))
+        print(stimuli_pointers[:9])
+        print("Last pointer: " + str(stimuli_pointers[-1]))
+        print("Number of sentences: " + str(len(sentences)))
         # Set subject_ids
         if subject_ids is None:
             subject_ids = listdir(scan_dir)
@@ -38,6 +43,12 @@ class AliceDataReader(FmriReader):
             last_scan_time = 0.0
             scan_events = []
             previous_sent = 0
+
+            # Note: When we align scans and stimuli, the last two sentences are missing because
+            # with 362 scans and a TR of 2 seconds, we only have 724 seconds of data
+            # but the stimuli extend until second 740
+            # We can only assume that the rest of the story was discarded.
+            # TODO: I send John Brennan a mail: waiting for a response.
             for scan in scans:
                 pointers_for_scan = [pointer for (word_time, pointer) in stimuli_pointers if
                                      word_time < scan_time and word_time > last_scan_time]
@@ -46,8 +57,11 @@ class AliceDataReader(FmriReader):
                 last_scan_time = scan_time
                 scan_time += 2
                 scan_events.append(scan_event)
+                print(last_scan_time, scan_time)
             block = Block(subject_id, 1, sentences, scan_events, self.get_voxel_to_region_mapping())
             blocks[subject_id] = [block]
+            print("Number of scans: " + str(len(scans)))
+
         return blocks
 
     def read_stimuli(self, text_dir):
@@ -106,7 +120,9 @@ class AliceDataReader(FmriReader):
     # which I had to fix manually.
     # I strongly recommend to use the modified version of the text alice_transcription_with_punctuation.txt in this project.
     def get_pointers(self, stimuli):
-        with (open("additional_data/alice_transcription_with_punctuation.txt", 'r')) as textfile:
+        dirname = os.path.dirname(__file__)
+        transcription_file = os.path.join(dirname, "additional_data/alice_transcription_with_punctuation.txt")
+        with (open(transcription_file, 'r')) as textfile:
             alice_text = textfile.read()
         tokenizer = SpacyTokenizer()
         tokenized_alice_text = tokenizer.tokenize(alice_text, sentence_mode=True)
@@ -118,6 +134,8 @@ class AliceDataReader(FmriReader):
         while (sentence_index < len(tokenized_alice_text)):
             # Reached end, add final punctuation
             if stimulus_index >= len(stimuli):
+                print("Reached end: " + str(sentence_index))
+                print(stimuli_pointers[-1])
                 for tok_index in range(token_index, len(tokenized_alice_text[sentence_index])):
                     stimuli_pointers.append((time, (sentence_index, tok_index)))
                 break

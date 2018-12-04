@@ -12,11 +12,13 @@ class MitchellReader(FmriReader):
     def __init__(self, data_dir):
         super(MitchellReader, self).__init__(data_dir)
         self.words2scans = {}
+        self.current_subject = {}
         self.stable_voxels = {}
         self.number_of_stable_voxels = 500
 
     def read_all_events(self, subject_ids=None):
         # Collect scan events
+
         blocks = {}
 
         if subject_ids is None:
@@ -24,7 +26,7 @@ class MitchellReader(FmriReader):
 
         for subject_id in subject_ids:
             blocks_for_subject = []
-            self.words2scans[subject_id] = {}
+            self.words2scans[subject_id]= {}
             datafile = scipy.io.loadmat(self.data_dir + "data-science-P" + str(subject_id) + ".mat")
             mapping = self.get_voxel_to_region_mapping(subject_id)
             for i in range(0, len(datafile["data"])):
@@ -37,9 +39,23 @@ class MitchellReader(FmriReader):
                 self.words2scans[subject_id][word] = scans
 
             n = 1
+
+            # Mitchell et al, 2008: "A representative fMRI image for each stimulus was created by computing the mean
+            # fMRI response over its six presentations, and the mean of all 60 of these representative images was
+            # then subtracted from each."
+            words2meanscans = {}
             for word, word_scans in self.words2scans[subject_id].items():
+                # Get the mean over the six presentations
                 mean_scan = np.mean(word_scans, axis =0)
-                scan_event = ScanEvent(subject_id, [(0, 0)], n, mean_scan)
+                words2meanscans[word] = mean_scan
+
+            # Get the mean of all 60 representative images
+            all_mean = np.mean(np.asarray(list(words2meanscans.values())))
+
+            # Subtract the all_mean from each representative image.
+            for word, scan in words2meanscans.items():
+                normalized_scan = scan - all_mean
+                scan_event = ScanEvent(subject_id, [(0, 0)], n, normalized_scan)
                 block = Block(subject_id, n, [[word]], [scan_event], mapping)
                 blocks_for_subject.append(block)
                 n+=1
@@ -51,8 +67,8 @@ class MitchellReader(FmriReader):
         return blocks
 
     def get_voxel_to_region_mapping(self, subject_id):
-        roi_file = self.data_dir + "additional_data/mitchell_roi_mapping/roi_P" + str(subject_id) + ".txt"
-        #print(roi_file)
+        dirname = os.path.dirname(__file__)
+        roi_file = os.path.join(dirname, "additional_data/mitchell_roi_mapping/roi_P" + str(subject_id) + ".txt")
         roi_mapping = {}
         voxel_index = 0
         with open(roi_file,"r") as roi_data:
@@ -64,9 +80,22 @@ class MitchellReader(FmriReader):
 
     def get_stable_voxels_for_fold(self, subject_id, test_stimuli):
         key = test_stimuli[0] + "_" + test_stimuli[1]
-        return self.stable_voxels[key]
 
+        if not self.current_subject == subject_id:
+            self.current_subject = subject_id
+            dirname = os.path.dirname(__file__)
+            voxel_file = os.path.join(dirname, "additional_data/mitchell_stable_voxels/stable_voxels_" + str(
+                subject_id) + "all.pickle")
+            with open(voxel_file, 'rb') as handle:
+                self.stable_voxels = pickle.load(handle)
+            if key in self.stable_voxels[key]:
+                return self.stable_voxels[key]
+            else:
+                raise ValueError("Stable voxels are not available for pair: " + key)
 
+    # Mitchell et al, 2008 use this method to select voxels.
+    # It takes very long to compute for all possible test pairs .
+    # For the other datasets, this method cannot be applied.
 
     def calculate_stable_voxels(self, subject_id,number_of_selected_voxels):
         stable_voxel_ids = []
@@ -124,7 +153,6 @@ class MitchellReader(FmriReader):
                             trial_correlation_pairs.append(correlation_for_pair)
                 # Sort the voxels by mean pearson correlation and return the indices for the n voxels with the highest values
                 # argpartition sorts in ascending order, so we take from the back
-                # I find this expression very hard to read, but Samira tested it, so I just keep it.
                 key = words[word1]+"_"+ words[word2]
                 stable_voxel_ids = np.argpartition(stability_matrix, -number_of_selected_voxels)[-number_of_selected_voxels:]
                 with open(self.data_dir + "stable_voxels_" + str(subject_id) + "_" + key + ".pickle",
@@ -132,6 +160,7 @@ class MitchellReader(FmriReader):
                     pickle.dump(stable_voxel_ids, handle)
                 stable_voxels_per_pair[key] = stable_voxel_ids
         return stable_voxels_per_pair
+
     def save_all_stable_voxels(self, subject_ids):
 
         stable_voxels_per_subject = {}
