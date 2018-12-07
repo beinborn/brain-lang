@@ -7,10 +7,10 @@ import os.path
 import pickle
 
 
-class MitchellReader(FmriReader):
+class WordsReader(FmriReader):
 
     def __init__(self, data_dir):
-        super(MitchellReader, self).__init__(data_dir)
+        super(WordsReader, self).__init__(data_dir)
         self.words2scans = {}
         self.current_subject = {}
         self.stable_voxels = {}
@@ -78,6 +78,17 @@ class MitchellReader(FmriReader):
         #print(roi_mapping)
         return roi_mapping
 
+    def get_voxel_to_xyz_mapping(self, subject_id):
+        dirname = os.path.dirname(__file__)
+        xyz_file = os.path.join(dirname, "additional_data/mitchell_xyz_mapping/xyz_P" + str(subject_id) + ".txt")
+        xyz_mapping = {}
+        voxel_index = 0
+        with open(xyz_file, "r") as coordinates:
+            for line in coordinates:
+                xyz_mapping[voxel_index] = tuple([float(x) for x in (line.strip().split("\t"))])
+                voxel_index += 1
+        # print(roi_mapping)
+        return xyz_mapping
     def get_stable_voxels_for_fold(self, subject_id, test_stimuli):
         key = test_stimuli[0] + "_" + test_stimuli[1]
 

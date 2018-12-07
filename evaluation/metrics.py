@@ -3,12 +3,12 @@ from sklearn.metrics import explained_variance_score
 from sklearn.metrics import r2_score
 import numpy as np
 import random
-import scipy.spatial as sp
+import scipy as sp
 from scipy.stats import pearsonr
 from scipy.stats import spearmanr
 from . import evaluation_util
-
-
+import math
+import logging
 def mse(predictions, targets):
   """Mean Squared Error.
   :param predictions: (n_samples, n_outputs)
@@ -63,21 +63,6 @@ def pairwise_accuracy_randomized(predictions, targets, number_of_trials):
 
     return averaged_results
 
-def first_order_rdm(data, distance_metric):
-    RDMs = []
-    for i in range(len(data)):
-      RDM = sp.distance.cdist(np.asarray(data[i]),np.asarray(data[i]), distance_metric)
-      RDMs.append(RDM)
-    return RDMs
-
-def second_order_rdm(RDMs):
-    flat = [m.flatten(1) for m in RDMs]
-    flat = np.array(flat).transpose()
-    c_matrix = spearmanr(flat)[0]
-    if not(isinstance(c_matrix, np.ndarray)):
-        c_matrix = np.array([[1,c_matrix],[c_matrix,1]])
-    RDM = np.ones(c_matrix.shape) - c_matrix
-    return RDM
 
 
 
@@ -86,10 +71,10 @@ def second_order_rdm(RDMs):
 
 def cosine_similarity(vector1, vector2):
 
-    return 1 - sp.distance.cosine(vector1, vector2)
+    return 1 - sp.spatial.distance.cosine(vector1, vector2)
 
 def euclidean_similarity(vector1, vector2):
-    return 1 - sp.distance.euclidean(vector1, vector2)
+    return 1 - sp.spatial.distance.euclidean(vector1, vector2)
 
 def pearson_correlation(vector1,vector2):
     return pearsonr(vector1, vector2)[0]
@@ -112,23 +97,54 @@ def pearson_complex(predictions, targets):
         correlations_per_voxel.append(correlation)
     return np.asarray(correlations_per_voxel), np.mean(np.asarray(correlations_per_voxel)), np.sum(np.asarray(correlations_per_voxel))
 
+def pearson_jain_complex(predictions, targets):
+    corr_squared_per_voxel = []
+    for voxel_id in range(0,len(targets[0])):
+        correlation = pearsonr(predictions[:,voxel_id],  targets[:, voxel_id])[0]
+        if(math.isnan(correlation)):
+            print("Encountered NaN value")
+            print("Voxel: " + str(voxel_id))
+            print("Predictions")
+            print(predictions[:,voxel_id])
+            print("Targets")
+            print(targets[:,voxel_id])
+        corr_squared = abs(correlation) * correlation
+        print("Correlation: " + str(correlation))
+        print("Abs(correlation) * correlation: " + str(corr_squared))
+        corr_squared_per_voxel.append(corr_squared)
+    return np.asarray(corr_squared_per_voxel), np.mean(np.asarray(corr_squared_per_voxel)), np.sum(np.asarray(corr_squared_per_voxel))
 
 
 
-# TODO not yet working, debug
-def representational_similarity_analysis(scans, embeddings, distance_metric='cosine'):
-    # If we do this, we do not need to apply a mapping model
-    # Calculate matrix of distances between all pairs of scans
-    # Calculate matrix of distances between all pairs of embeddings
-    l = scans + embeddings
-    RDMS = first_order_rdm(l, distance_metric)
-    # for all possible pairs of (scan, embedding) calculate
-    # correlation between distance vectors in similarity metrics
-    RDM = second_order_rdm(RDMS)
 
+# Methods for calculating dissimilarity matrices
+def get_dists(data):
+    logging.info("Calculating dissimilarity matrices")
+    x = {}
+    C = {}
 
+    for i in np.arange(len(data)):
+        x[i] = data[i]
+        C[i] = sp.spatial.distance.cdist(x[i], x[i], 'cosine') + 0.00000000001
+        C[i] /= C[i].max()
 
+    return x, C
 
+# Calculate correlation between
+def compute_distance_over_dists(x, C):
+    logging.info("Calculate ")
+    keys = np.asarray(list(x.keys()))
+    correlations = np.zeros((len(keys), len(keys)))
+    for i in np.arange(len(keys)):
+        for j in np.arange(len(keys)):
+            corr = []
+            for a, b in zip(C[keys[i]], C[keys[j]]):
+                p, _ = sp.stats.spearmanr(a, b)
+                corr.append(p)
+
+        correlations[i][j] = np.mean(corr)
+
+    return correlations
 
 
 

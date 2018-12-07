@@ -52,21 +52,25 @@ class StoryDataReader(FmriReader):
         blocks = {}
 
         for subject in subject_ids:
-            blocks_for_subject = []
-            for block_index in range(0, datamatrix.shape[1]):
-                stimulus_pointer = []
-                for sentence_id in range(0,len(stories[block_index])):
-                    for word_id in range(0,len(stories[block_index][sentence_id])):
-                        stimulus_pointer.append((sentence_id,word_id))
-                # For this dataset, the brain activation has already been averaged over the whole story which consists of several sentences.
-                # What do I put in stimulus_pointer?
-                # I do not yet have a theory on whether it makes sense to include the context primer or not and where.
+            # We exclude subject 29 because the voxel activations are all 0.
+            if self.language =="english" and subject ==29:
+                pass
+            else:
+                blocks_for_subject = []
+                for block_index in range(0, datamatrix.shape[1]):
+                    stimulus_pointer = []
+                    for sentence_id in range(0,len(stories[block_index])):
+                        for word_id in range(0,len(stories[block_index][sentence_id])):
+                            stimulus_pointer.append((sentence_id,word_id))
+                    # For this dataset, the brain activation has already been averaged over the whole story which consists of several sentences.
+                    # What do I put in stimulus_pointer?
+                    # I do not yet have a theory on whether it makes sense to include the context primer or not and where.
 
-                event = ScanEvent( str(subject),  stimulus_pointer, block_index, datamatrix[subject][block_index])
-                block = Block(str(subject), block_index, stories[block_index],[event])
-                block.scan_events = [event]
-                blocks_for_subject.append(block)
-            blocks[subject] = blocks_for_subject
+                    event = ScanEvent( str(subject),  stimulus_pointer, block_index, datamatrix[subject][block_index])
+                    block = Block(str(subject), block_index, stories[block_index],[event])
+                    block.scan_events = [event]
+                    blocks_for_subject.append(block)
+                blocks[subject] = blocks_for_subject
         return blocks
 
 

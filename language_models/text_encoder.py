@@ -36,7 +36,8 @@ class ElmoEncoder(TextEncoder):
         # Layer 0 are token representations which are not sensitive to context
         # Layer 1 are representations from the first bilstm
         # Layer 2 are the representations from the second bilstm
-
+        print(name)
+        print(len(sentences))
         embedding_file = self.embedding_dir + name + "sentence_embeddings.pickle"
         if os.path.isfile(embedding_file):
             logging.info("Loading embeddings from " + embedding_file)
@@ -90,7 +91,7 @@ class ElmoEncoder(TextEncoder):
 
         token_layer_embeddings = [embedding[0] for embedding in word_embeddings[:]]
 
-    # According to the code, forward lstm and backward lstm are concatenated.
+    # According to the elmo code, forward lstm and backward lstm are concatenated.
      # By using only the first half of the dimensions, I assume that I am using only the forward lm.
         if self.only_forward:
             forward_embeddings = []
@@ -111,16 +112,17 @@ class ElmoEncoder(TextEncoder):
                 story_embeddings = pickle.load(handle)
         else:
             story_embeddings = []
+            i = 0
             for story in stories:
-                sentence_embeddings = self.get_sentence_embeddings(name, story)
+                sentence_embeddings = self.get_sentence_embeddings(name+ "_" + str(i), story)
                 story_embedding = []
                 for embedding in sentence_embeddings:
                     if mode == "sentence_final":
                         story_embedding.append(embedding[-1])
                     if mode == "mean":
                         story_embedding.append(np.mean(embedding, axis =0))
-
                 story_embeddings.append(np.mean(story_embedding, axis =0))
+                i+=1
 
 
             # Save embeddings

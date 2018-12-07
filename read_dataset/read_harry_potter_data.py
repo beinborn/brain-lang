@@ -25,16 +25,19 @@ class HarryPotterReader(FmriReader):
     def read_all_events(self, subject_ids=None):
         # Collect scan events
         blocks = {}
-
+        print("Reading")
         if subject_ids is None:
             subject_ids = np.arange(1, 9)
 
         for subject_id in subject_ids:
+            print(subject_id)
             blocks_for_subject = []
             for block_id in (range(1, 5)):
+                print("Block: " + str(block_id))
                 logging.info("Reading block: " + str(block_id))
                 block = self.read_block(subject_id, block_id)
                 block.voxel_to_region_mapping = self.get_voxel_to_region_mapping(subject_id)
+                print(subject_id, block_id, len(block.sentences))
                 blocks_for_subject.append(block)
             blocks[subject_id] = blocks_for_subject
 
@@ -47,6 +50,7 @@ class HarryPotterReader(FmriReader):
         # Data is in matlab format
         # Data structure is a dictionary with keys data, time, words, meta
         # Shapes for subject 1, block 1: data (1351,37913), time (1351,2) words (1, 5176)
+        print("Load file")
         datafile = scipy.io.loadmat(self.data_dir + "subject_" + str(subject_id) + ".mat")
 
         # We have one scan every 2 seconds
@@ -63,6 +67,7 @@ class HarryPotterReader(FmriReader):
         # --- PROCESS TEXT STIMULI -- #
         # Here we extract the presented words and align them with their timestamps.
         # The original data consists of weirdly nested arrays.
+
         timed_words = []
         presented_words = datafile["words"]
 
@@ -101,7 +106,7 @@ class HarryPotterReader(FmriReader):
                 # We have not figured out what the @ should stand for and just remove it
                 word = word.replace("@", "")
                 # I am tokenizing the word in the reader because I only use the elmo embedding.
-                # If we want to switch embedders, it is better to have tokenization as a seprate module
+                # If we want to switch embedders, it is better to have tokenization as a separate module
                 tokenized_words = tokenizer.tokenize(word)
                 for token in tokenized_words:
                     if len(sentences) > 0:
@@ -150,6 +155,17 @@ class HarryPotterReader(FmriReader):
          # print(name[0])
         return voxel_to_region
 
+    def get_voxel_to_xyz_mapping(self, subject_id):
+        metadata = scipy.io.loadmat(self.data_dir + "subject_" + str(subject_id) + ".mat")["meta"]
+        coordinates_of_nth_voxel = metadata[0][0][6]
+
+        voxel_to_xyz = {}
+        for voxel in range(0, coordinates_of_nth_voxel.shape[0]):
+
+            voxel_to_xyz[voxel] = coordinates_of_nth_voxel[voxel]
+        #for name in roi_names:
+         # print(name[0])
+        return voxel_to_xyz
 
 # This is a quite naive sentence boundary detection that only works for this dataset.
 def is_beginning_of_new_sentence(sentence, newword):

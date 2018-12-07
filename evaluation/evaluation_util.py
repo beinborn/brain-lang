@@ -78,22 +78,22 @@ def save_evaluation(evaluation_file, evaluation_name, subject_id, collected_resu
     with open(evaluation_file, "w") as eval_file:
         eval_file.write("Experiment:\t" + evaluation_name + "\n")
         eval_file.write("Subject:\t" + str(subject_id) + "\n")
-        voxelwise_file = path + "/voxelwise_results.pickle"
+
         for key, values in collected_results.items():
             result_values = np.asarray(values)
-            # Write the voxelwise results to a file, so that we can also check results just for the best voxels.
+            # Write the voxelwise results to an extra file.
             # Note: when we do no voxel selection, we still remove the voxels that are constant in the training data.
             # This might have the effect that we have a slightly different number of voxels in each fold.
             # This can affect the calculation of the sum and the calculation of the average result per voxel.
-            if result_values.ndim == 2:
-                average = np.mean(result_values, axis=0)
+            if  key.endswith("voxelwise"):
+
+                voxelwise_file = path + "/" + evaluation_name + "_" + key + "voxelwise_results.pickle"
                 voxelwise_results[key] = result_values
 
-                top5 = sorted(average)[-20:]
-                eval_file.write(str(key) + "_top20\t"  + str(top5.reverse()))
                 with open(voxelwise_file, "wb") as handle:
                     pickle.dump(voxelwise_results, handle)
 
+            # Average the results over all folds
             else:
                 average = np.mean(result_values)
                 eval_file.write(str(key) + "\t" + str(average) + "\t" + str(values))

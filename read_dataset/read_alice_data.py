@@ -57,7 +57,6 @@ class AliceDataReader(FmriReader):
                 last_scan_time = scan_time
                 scan_time += 2
                 scan_events.append(scan_event)
-                print(last_scan_time, scan_time)
             block = Block(subject_id, 1, sentences, scan_events, self.get_voxel_to_region_mapping())
             blocks[subject_id] = [block]
             print("Number of scans: " + str(len(scans)))
