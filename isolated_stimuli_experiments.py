@@ -24,24 +24,29 @@ if __name__ == '__main__':
     stimuli_encoder = ElmoEncoder(save_dir)
     random_encoder = RandomEncoder(save_dir)
 
-    for encoder in [stimuli_encoder]:
+    for encoder in [stimuli_encoder, random_encoder]:
         pipeline_name = "Words" + encoder.__class__.__name__
         mitchell_pipeline = SingleInstancePipeline(mitchell_reader, encoder, mapper, pipeline_name, save_dir=save_dir)
-        mitchell_pipeline.subject_ids = [1]
+        #mitchell_pipeline.subject_ids = [1]
         mitchell_pipeline.get_all_predictive_voxels("test")
-        # #
-        # #?
-        # # # First pairwise
-        # voxel_selections = ["on_train_ev"]
-        # for v_selection in voxel_selections:
-        #     mitchell_pipeline.voxel_selection = v_selection
-        #     # mitchell_pipeline.pairwise_procedure( v_selection + "_pairwise")
-        #     mitchell_pipeline.standard_crossvalidation( v_selection+"_crossvalidation")
 
-        pipeline_name = "Posts" + encoder.__class__.__name__
-        kaplan_pipeline = SingleInstancePipeline(kaplan_reader, encoder, mapper, pipeline_name, save_dir=save_dir)
-        # kaplan_pipeline.voxel_selection = v_selection
-        kaplan_pipeline.subject_ids = [27]
-        kaplan_pipeline.get_all_predictive_voxels("test")
-    # kaplan_pipeline.standard_crossvalidation(v_selection + "_crossvalidation")
-    # kaplan_pipeline.pairwise_procedure(v_selection + "_pairwise")
+        voxel_selections = ["none"]
+        for v_selection in voxel_selections:
+            mitchell_pipeline.voxel_selection = v_selection
+            #mitchell_pipeline.runRSA("rsa")
+            #mitchell_pipeline.pairwise_procedure( v_selection + "_pairwise")
+            mitchell_pipeline.standard_crossvalidation("testeval_" +v_selection)
+
+            pipeline_name = "Posts" + encoder.__class__.__name__
+            kaplan_pipeline = SingleInstancePipeline(kaplan_reader, encoder, mapper, pipeline_name, save_dir=save_dir)
+            kaplan_pipeline.voxel_selection = v_selection
+            #kaplan_pipeline.runRSA("rsa")
+            kaplan_pipeline.standard_crossvalidation("testeval_"+ v_selection)
+
+        #
+        #
+        #     # This was missing
+        #     kaplan_pipeline.subject_ids = [28]
+        #     kaplan_pipeline.voxel_selection ="on_train_ev"
+        # # kaplan_pipeline.standard_crossvalidation(v_selection + "_crossvalidation")
+        #     kaplan_pipeline.pairwise_procedure(v_selection + "_pairwise")

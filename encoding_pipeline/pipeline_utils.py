@@ -3,6 +3,7 @@ import logging
 
 
 def reduce_voxels(list_of_scans, interesting_voxel_ids):
+
     if len(interesting_voxel_ids) < len(list_of_scans[0]):
         reduced_list = np.asarray([list(scan[interesting_voxel_ids]) for scan in list_of_scans])
     else:

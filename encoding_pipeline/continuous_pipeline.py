@@ -10,7 +10,6 @@ import numpy as np
 import pickle
 import os
 import logging
-from result_analysis import plot_rdm
 logging.basicConfig(level=logging.INFO)
 
 
@@ -83,6 +82,7 @@ class ContinuousPipeline(Pipeline):
         subject_scans =[]
         subject_embeddings = []
         print(self.data.keys())
+        scores = {}
         for subject_id in self.subject_ids:
             print("Start processing for SUBJECT: " + str(subject_id))
             all_scans = []
@@ -99,28 +99,34 @@ class ContinuousPipeline(Pipeline):
             all_scans = preprocess_voxels(self.voxel_preprocessings, np.asarray(all_scans))
             # TODO might want to add voxel selection here
             # Collect data from subjects
-            subject_scans.extend(all_scans)
-            subject_embeddings.extend(all_embeddings)
+            subject_scans.append(all_scans)
+            subject_embeddings.append(all_embeddings)
             # Calculate similarity between scans and embeddings
-            print(datetime.datetime.now().time())
 
-            print(np.asarray(all_scans).shape , np.asarray(all_embeddings).shape)
+
             x, C = get_dists([all_scans , all_embeddings])
-            print(datetime.datetime.now().time())
-            rdm = compute_distance_over_dists(x, C)
-            print(datetime.datetime.now().time())
-            print(rdm)
-            score = rdm[0][1]
+
+            spearman, pearson, kullback = compute_distance_over_dists(x, C)
+
+            score = (spearman[0][1], pearson[0][1], kullback[0][1])
+            scores[subject_id] = score
+            print("Spearman, Pearson, Kullback: ")
             print(score)
-        print(datetime.datetime.now().time())
-        print(np.asarray(subject_scans).shape, np.asarray(subject_embeddings).shape)
-        x_all, C_all = get_dists([subject_scans, subject_embeddings])
-        print(datetime.datetime.now().time())
-        rdm = compute_distance_over_dists(x_all, C_all)
-        scan_labels = ["Scan_"+str(id) for id in self.subject_ids ]
-        embedding_labels = ["Scan_" + str(id) for id in self.subject_ids]
-        plot_rdm(x_all, C_all, [scan_labels, embedding_labels])
-        print(np.mean(rdm))
+        all_scores = scores.values()
+        mean_spearman = np.mean(np.asarray([score[0] for score in all_scores]))
+        mean_pearson = np.mean(np.asarray([score[1] for score in all_scores]))
+        mean_kullback = np.mean(np.asarray([score[2] for score in all_scores]))
+        rdm_file = self.save_dir + self.pipeline_name + "/" + experiment_name + "_RDM.txt"
+        with open(rdm_file, "w") as eval_file:
+            eval_file.write("Subject\tSpearman\t,Pearson\t,Kullback\n")
+            for subject in scores.keys():
+                result = scores[subject]
+                eval_file.write(
+                    str(subject) + "\t" + str(result[0]) + "\t" + str(result[1]) + "\t" + str(result[2]) + "\n")
+            eval_file.write(
+                "\nAverages:" + "\t" + str(mean_spearman) + "\t" + str(mean_pearson) + "\t" + str(mean_kullback) + "\n")
+
+
 
 
     def evaluate_crossvalidation(self, subject_id, subject_blocks, experiment_name):
@@ -139,7 +145,7 @@ class ContinuousPipeline(Pipeline):
             train_data, train_targets, test_data, test_targets = self.prepare_fold(testkey, all_blocks)
             logging.info("Select voxels on the training data")
             selected_voxels = self.select_interesting_voxels(self.voxel_selection, train_data, train_targets, experiment_name, 500)
-
+            print(train_targets)
             # Reduce the scans and the predictions to the interesting voxels
             train_targets = reduce_voxels(train_targets, selected_voxels)
             test_targets = reduce_voxels(test_targets, selected_voxels)
@@ -153,9 +159,9 @@ class ContinuousPipeline(Pipeline):
             current_results = evaluate_fold(self.metrics, test_predictions, test_targets)
 
             print("Results for fold " + str(fold))
-            print(str(current_results["R2"][1]))
+            print(str(current_results[""][1]))
             collected_results = update_results(current_results, collected_results)
-
+            #
             # pairwise_matches = pairwise_accuracy_randomized(test_predictions, test_targets, 1)
             # for key, value in pairwise_matches.items():
             #     print(key, value / float(len(test_predictions)))
@@ -168,10 +174,10 @@ class ContinuousPipeline(Pipeline):
         logging.info("Writing evaluation to " + evaluation_path)
         evaluation_util.save_evaluation(evaluation_path, experiment_name, subject_id, collected_results)
 
-        pairwise_evaluation_file = self.save_dir + self.pipeline_name + "/evaluation_" + str(subject_id) +  experiment_name +"_2x2.txt"
-        logging.info("Writing evaluation to " + pairwise_evaluation_file)
-        save_pairwise_evaluation(pairwise_evaluation_file, self.pipeline_name, subject_id, collected_matches,
-                                      len(train_targets) + len(test_targets))
+        # pairwise_evaluation_file = self.save_dir + self.pipeline_name + "/evaluation_" + str(subject_id) +  experiment_name +"_2x2.txt"
+        # logging.info("Writing evaluation to " + pairwise_evaluation_file)
+        # save_pairwise_evaluation(pairwise_evaluation_file, self.pipeline_name, subject_id, collected_matches,
+        #                               len(train_targets) + len(test_targets))
         logging.info("Experiment completed.")
 
     def prepare_fold(self, testblock, subject_blocks):

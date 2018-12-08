@@ -6,7 +6,7 @@ from encoding_pipeline.pipeline import Pipeline
 from evaluation.metrics import *
 from evaluation.evaluation_util import *
 import numpy as np
-
+import datetime
 import pickle
 import os
 import logging
@@ -42,6 +42,53 @@ class SingleInstancePipeline(Pipeline):
             print("Start processing for SUBJECT: " + str(subject_id))
             subject_data = self.data[subject_id]
             self.evaluate_crossvalidation(subject_id, subject_data, experiment_name)
+
+    def runRSA(self, experiment_name):
+
+        # Reading data
+        self.prepare_data()
+        # Iterate over subjects
+
+        if self.subject_ids == None:
+            self.subject_ids = list(self.data.keys())
+        print("Subjects: " + str(self.subject_ids))
+
+        print(self.data.keys())
+        scores = {}
+        for subject_id in self.subject_ids:
+            print("Start processing for SUBJECT: " + str(subject_id))
+
+            # Iterate through blocks and collect all scans and embeddings
+            all_scans, all_embeddings, _ = self.data[subject_id]
+
+            # Preprocess voxels
+            all_scans = preprocess_voxels(self.voxel_preprocessings, np.asarray(all_scans))
+            # TODO might want to add voxel selection here
+            # Collect data from subjects
+
+            x, C = get_dists([all_scans, all_embeddings])
+
+            spearman, pearson, kullback = compute_distance_over_dists(x, C)
+
+            score = (spearman[0][1], pearson[0][1], kullback[0][1])
+            scores[subject_id] = score
+            print("Spearman, Pearson, Kullback: ")
+            print(score)
+        all_scores = scores.values()
+        mean_spearman = np.mean(np.asarray([score[0] for score in all_scores]))
+        mean_pearson = np.mean(np.asarray([score[1] for score in all_scores]))
+        mean_kullback = np.mean(np.asarray([score[2] for score in all_scores]))
+        print("Means: Spearman, Pearson, Kullback")
+        print(mean_spearman, mean_pearson, mean_kullback)
+        rdm_file = self.save_dir + self.pipeline_name + "/" + experiment_name + "_RDM.txt"
+        with open(rdm_file, "w") as eval_file:
+            eval_file.write("Subject\tSpearman\t,Pearson\t,Kullback\n")
+            for subject in scores.keys():
+                result = scores[subject]
+                eval_file.write(
+                    str(subject) + "\t" + str(result[0]) + "\t" + str(result[1]) + "\t" + str(result[2]) + "\n")
+            eval_file.write(
+                "\nAverages:" + "\t" + str(mean_spearman) + "\t" + str(mean_pearson) + "\t" + str(mean_kullback) + "\n")
 
     def pairwise_procedure(self, experiment_name):
         # Reading data
@@ -115,14 +162,13 @@ class SingleInstancePipeline(Pipeline):
             all_embeddings = []
 
             # Iterate through blocks and collect all scans and embeddings
-            scans, embeddings,_ = self.data[subject_id]
+            scans, embeddings, _ = self.data[subject_id]
 
             all_scans.extend(scans)
 
             all_embeddings.extend(embeddings)
             predictive_voxels = self.get_predictive_voxels(explained_variance_score, all_embeddings, all_scans, 0.4,
-                                                       experiment_name + "_" + str(subject_id))
-
+                                                           experiment_name + "_" + str(subject_id))
 
     def evaluate_leave_two_out_procedure(self, subject_id, subject_data, experiment_name):
         collected_matches = {}
@@ -142,7 +188,8 @@ class SingleInstancePipeline(Pipeline):
 
                 logging.info("Select voxels on the training data")
                 if (self.voxel_selection == "stable"):
-                    selected_voxels = self.brain_data_reader.get_stable_voxels(subject_id, test_stimuli[0])
+                    selected_voxels = self.brain_data_reader.get_stable_voxels_for_fold(subject_id, test_stimuli)
+                    print(selected_voxels)
                 else:
                     selected_voxels = self.select_interesting_voxels(self.voxel_selection, train_data, train_targets,
                                                                      experiment_name)
@@ -171,7 +218,6 @@ class SingleInstancePipeline(Pipeline):
 
         logging.info("Experiment completed.")
 
-
     def prepare_fold(self, data, testids):
         train_scans = []
         train_embeddings = []
@@ -198,7 +244,6 @@ class SingleInstancePipeline(Pipeline):
         test_targets = test_scans
 
         return np.asarray(train_data), np.asarray(train_targets), np.asarray(test_data), np.asarray(test_targets)
-
 
     def prepare_data(self):
         datafile = self.save_dir + self.pipeline_name + "/aligned_data.pickle"

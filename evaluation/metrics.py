@@ -82,20 +82,25 @@ def pearson_correlation(vector1,vector2):
 
 def r2_score_complex(predictions, targets):
     r2values = r2_score( targets,predictions, multioutput="raw_values")
-    return r2values, np.mean(np.asarray(r2values)), np.sum(np.asarray(r2values))
+    top_r2 = r2values[:500]
+    return r2values, np.mean(np.asarray(r2values)), np.sum(np.asarray(r2values)), top_r2, np.mean(np.asarray(top_r2)), np.sum(np.asarray(top_r2))
 
 def explained_variance_complex(predictions, targets):
     ev_scores = explained_variance_score( targets,predictions, multioutput="raw_values")
-    return ev_scores, np.mean(np.asarray(ev_scores)), np.sum(np.asarray(ev_scores))
+    top_ev = ev_scores[:500]
+    return ev_scores, np.mean(np.asarray(ev_scores)), np.sum(np.asarray(ev_scores)), top_ev, np.mean(np.asarray(top_ev)), np.sum(np.asarray(top_ev))
 
 def explained_variance(predictions, targets):
     return explained_variance_score( targets,predictions, multioutput="raw_values")
-def pearson_complex(predictions, targets):
-    correlations_per_voxel = []
-    for voxel_id in range(0,len(targets[0])):
-        correlation = pearsonr(predictions[:,voxel_id],  targets[:, voxel_id])[0]
-        correlations_per_voxel.append(correlation)
-    return np.asarray(correlations_per_voxel), np.mean(np.asarray(correlations_per_voxel)), np.sum(np.asarray(correlations_per_voxel))
+
+# Not used
+# def pearson_complex(predictions, targets):
+#     correlations_per_voxel = []
+#     for voxel_id in range(0,len(targets[0])):
+#         correlation = pearsonr(predictions[:,voxel_id],  targets[:, voxel_id])[0]
+#         correlations_per_voxel.append(correlation)
+#
+#     return np.asarray(correlations_per_voxel), np.mean(np.asarray(correlations_per_voxel)), np.sum(np.asarray(correlations_per_voxel))
 
 def pearson_jain_complex(predictions, targets):
     corr_squared_per_voxel = []
@@ -109,10 +114,13 @@ def pearson_jain_complex(predictions, targets):
             print("Targets")
             print(targets[:,voxel_id])
         corr_squared = abs(correlation) * correlation
-        print("Correlation: " + str(correlation))
-        print("Abs(correlation) * correlation: " + str(corr_squared))
+
         corr_squared_per_voxel.append(corr_squared)
-    return np.asarray(corr_squared_per_voxel), np.mean(np.asarray(corr_squared_per_voxel)), np.sum(np.asarray(corr_squared_per_voxel))
+
+    top_corr = corr_squared_per_voxel[:500]
+    print(top_corr)
+    print(np.asarray(top_corr))
+    return np.asarray(corr_squared_per_voxel), np.mean(np.asarray(corr_squared_per_voxel)), np.sum(np.asarray(corr_squared_per_voxel), np.asarray(top_corr), np.mean(np.asarray(top_corr)), np.sum(np.asarray(top_corr)))
 
 
 
@@ -130,21 +138,26 @@ def get_dists(data):
 
     return x, C
 
-# Calculate correlation between
+
 def compute_distance_over_dists(x, C):
     logging.info("Calculate ")
     keys = np.asarray(list(x.keys()))
-    correlations = np.zeros((len(keys), len(keys)))
+    kullback = np.zeros((len(keys), len(keys)))
+    spearman = np.zeros((len(keys), len(keys)))
+    pearson = np.zeros((len(keys), len(keys)))
     for i in np.arange(len(keys)):
         for j in np.arange(len(keys)):
-            corr = []
+            corr_s = []
+            corr_p = []
+            kullback[i][j] = np.sum(sp.stats.entropy(C[keys[i]], C[keys[j]], base=None))
             for a, b in zip(C[keys[i]], C[keys[j]]):
-                p, _ = sp.stats.spearmanr(a, b)
-                corr.append(p)
-
-        correlations[i][j] = np.mean(corr)
-
-    return correlations
+                s, _ = sp.stats.spearmanr(a, b)
+                p, _ = sp.stats.pearsonr(a, b)
+                corr_s.append(s)
+                corr_p.append(p)
+        spearman[i][j] = np.mean(corr_s)
+        pearson[i][j] = np.mean(corr_p)
+    return spearman, pearson, kullback
 
 
 

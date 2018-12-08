@@ -31,16 +31,17 @@ def add_to_collected_results( current_results, collected_results):
 def update_results(current_results,collected_results):
     for key, value in current_results.items():
         i = 0
-        for eval_type in ["voxelwise", "average", "sum"]:
-            my_key = key + "_" + eval_type
-            my_value = value[i]
-            if my_key in collected_results.keys():
-                results = collected_results[my_key]
-                results.append(my_value)
-                collected_results[my_key] = results
-            else:
-                collected_results[my_key] = [my_value]
-            i += 1
+        for voxel_number in ["all", "top"]:
+            for eval_type in ["voxelwise", "average", "sum"]:
+                my_key = voxel_number + "_" +key + "_" + eval_type
+                my_value = value[i]
+                if my_key in collected_results.keys():
+                    results = collected_results[my_key]
+                    results.append(my_value)
+                    collected_results[my_key] = results
+                else:
+                    collected_results[my_key] = [my_value]
+                i += 1
     return collected_results
 
 def delete_constant_rows(predictions, targets):

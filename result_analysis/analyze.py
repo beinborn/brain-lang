@@ -150,20 +150,18 @@ def make_pairwise_plot(results, outfile):
 
 #combine_results("/Users/lisa/Experiments/fmri/single_instance/Posts_ElmoEncoder/","*_2x2.txt",#"/Users/lisa/Experiments/fmri/Analysis/PostsElmoEncoder/Posts_all_ElmoEncoder_2x2.csv")
 
-def get_results(encoder, setting = "single_instance"):
+def get_results(encoder, setting = "single_instance", vs =["on_train_ev", "none"], exp = [ "cv", "2x2"] ):
     resultdir = "/Users/lisa/Experiments/fmri/" + setting + "/"+ encoder
     savedir = "/Users/lisa/Experiments/fmri/Analysis/" + encoder
-    vs = ["on_train_ev", "none"]
-    exp = ["cv"]
     for vs_type in vs:
         for exp_type in exp:
             print( exp_type, vs_type)
             combine_results(resultdir,"*"+vs_type + "*_"+ exp_type + "*.txt",
                             savedir +"_"+ vs_type +"_"+ exp_type )
 
-#get_results("WordsElmoEncoder")
+get_results("WordsElmoEncoder")
 #get_results(HarryElmoEncoder", "Continuous")
 #get_results(HarryRandomEncoder",  "Continuous")
 #get_results("WordsRandomEncoder")
 
-get_results("PostsRandomEncoder")
+#get_results("PostsRandomEncoder")

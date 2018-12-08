@@ -33,26 +33,27 @@ if __name__ == '__main__':
 
     # Set up the experiments
 
-    for encoder in [stimuli_encoder]:
-        # HARRY EXPERIMENTS WITH DIFFERENT VOXEL SELECTION
+    for encoder in [stimuli_encoder, random_encoder]:
+
         pipeline_name = "Harry" + encoder.__class__.__name__
         harry_experiment = ContinuousPipeline(harry_reader, encoder, mapper, pipeline_name, save_dir=save_dir)
         harry_experiment.voxel_preprocessings = [(detrend, {'t_r': 2.0}), (reduce_mean, {})]
 
 
-        voxel_selections = [ "none" "on_train_ev" ]
+        voxel_selections = ["on_train_ev"  "none" ]
         for v_selection in voxel_selections:
             harry_experiment.voxel_selection = v_selection
-        #harry_experiment.subject_ids = [1]
-            harry_experiment.runRSA("rsa_"+ v_selection)
+            harry_experiment.process("testevaluation" +v_selection)
+            #harry_experiment.runRSA("rsa_")
         #harry_experiment.get_all_predictive_voxels("test")
 
     # harry_experiment.process("test" + v_selection)
-
-    pipeline_name = "Alice" + encoder.__class__.__name__
-    alice_experiment = ContinuousPipeline(alice_reader, encoder, mapper, pipeline_name, save_dir=save_dir)
-    # # The alice dataset only consists of activation values for six regions
-    alice_experiment.voxel_selection = "none"
-    alice_experiment.voxel_preprocessings = [(reduce_mean, {})]
-    alice_experiment.runRSA("rsa")
+    #
+        pipeline_name = "Alice" + encoder.__class__.__name__
+        alice_experiment = ContinuousPipeline(alice_reader, encoder, mapper, pipeline_name, save_dir=save_dir)
+        # # The alice dataset only consists of activation values for six regions
+        #alice_experiment.voxel_selection = "none"
+        #alice_experiment.voxel_preprocessings = [(reduce_mean, {})]
+        #alice_experiment.runRSA("rsa")
+        alice_experiment.process("testevaluation" +v_selection)
     # alice_experiment.process("standard512_reduce_mean")

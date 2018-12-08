@@ -82,6 +82,8 @@ class Pipeline(object):
                 savefile.write(str(topn_voxels))
                 savefile.write("\n")
             return topn_voxels
+        else:
+            raise ValueError("Choose a voxel selection mode. You can use 'none'.")
 
 
     def get_predictive_voxels(self, metric_fn, stimuli, scans, threshold, experiment_name):
