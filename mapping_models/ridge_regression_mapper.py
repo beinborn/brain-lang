@@ -2,9 +2,9 @@ from sklearn.linear_model import *
 from mapping_models.basic_mapper import BasicMapper
 import numpy as np
 
-class SkMapper(BasicMapper):
+class RegressionMapper(BasicMapper):
   def __init__(self, alpha = 100, model_fn=Ridge):
-    super(SkMapper, self).__init__()
+    super(RegressionMapper, self).__init__()
     self.alpha = alpha
     self.model_fn = model_fn
     self.model = None

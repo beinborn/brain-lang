@@ -5,8 +5,13 @@ import os.path
 import pickle
 
 # Mitchell et al, 2008 use this method to select voxels.
-    # It takes very long to compute for all possible test pairs .
-    # For the other datasets, this method cannot be applied.
+# It takes very long to compute for all possible test pairs.
+# We implemented it to our best understanding according to the descriptions in their supplementary material,
+# but no guarantees that this is what they used.
+# We provide the results at additional_data/mitchell_stable_voxels
+
+#  For the other datasets, stable voxels cannot be calculated.
+
 def select_voxels(subject_id, data_dir):
     words2scans = {}
     datafile = scipy.io.loadmat(data_dir + "data-science-P" + str(subject_id) + ".mat")
@@ -81,12 +86,15 @@ def calculate_stable_voxels(subject_id, words2scans, number_of_selected_voxels):
 
                         correlation_for_pair = pearsonr(vector1, vector2)[0]
                         trial_correlation_pairs.append(correlation_for_pair)
+
             # Sort the voxels by mean pearson correlation and return the indices for the n voxels with the highest values
-            # argpartition sorts in ascending order, so we take from the back
-            # I find this expression very hard to read, but Samira tested it, so I just keep it.
+            # argpartition splits the list so that all elements higher than the kth element (in our case -500)
+            # will be sorted to occur after the kth element (there is no absolute sorting, though).
+
             key = words[word1] + "_" + words[word2]
             stable_voxel_ids = np.argpartition(stability_matrix, -number_of_selected_voxels)[
                                -number_of_selected_voxels:]
+
             stable_voxels_per_pair[key] = stable_voxel_ids
             print("Saving stable voxels to dict for pair: "+ str(key))
             print("Number of keys saved already: " +str(len(stable_voxels_per_pair.keys())))

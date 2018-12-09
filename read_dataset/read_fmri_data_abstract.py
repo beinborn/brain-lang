@@ -1,4 +1,4 @@
-"""Basic class for Brain Readers.
+"""Basic class for fMRI data readers.
 """
 
 

@@ -3,7 +3,10 @@ import pickle
 import os
 import logging
 
-
+# This class generates random embeddings.
+# Every word is assigned a random (but fixed) vector of the requested dimensionality.
+# Sentence embeddings are a combination of token embeddings.
+# Story embeddings are averaged over the averages of the sentence embeddings.
 class RandomEncoder(object):
     def __init__(self, embedding_dir):
         self.embedding_dir = embedding_dir
@@ -87,10 +90,9 @@ class RandomEncoder(object):
                 for sentence in sentence_embeddings:
                     sentence_means.append(np.mean(np.asarray(sentence), axis = 0))
                 story_embedding = np.mean(np.asarray(sentence_means), axis = 0)
+
                 # We take the mean over the sentences.
-                # fMRI images are also averaged over the sentences, so that should be okay.
-                print(np.asarray(sentence_means).shape)
-                print(story_embedding.shape)
+                # fMRI images in the Kaplan data are also averaged over the sentences, so that should be okay.
                 story_embeddings.append(story_embedding)
                 i += 1
 

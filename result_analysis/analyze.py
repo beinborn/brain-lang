@@ -3,26 +3,24 @@ import pandas as pd
 import glob, os
 import seaborn as sns
 import matplotlib.pyplot as plt
-import numpy as np
-# resultfile = "/Users/Lisa/Experiments/fmri/Continuous/HarryElmoEncoder/standard512_none_Pearson_squared_voxelwisevoxelwise_results.pickle"
-# with open(resultfile, 'rb') as handle:
-#     results = pickle.load(handle)
-# ps = results["Pearson_squared_voxelwise"]
-# print(len(ps))
-# print(ps)
-# i = 0
-# for result in ps:
-#     for value in result:
-#         if np.isnan(value):
-#             print(i)
-#             print(result)
-#         i+=1
+
+
+# This method can be used to combine all evaluation files that have been obtained by the same encoder.
+# It writes out results per subjects and averages over all subjects.
+# It also produces some nice violin plots for a first impression.
+
+def get_results(encoder, setting = "single_instance", vs =["on_train_ev", "none"], exp = [ "cv", "2x2"] ):
+    resultdir = "/Users/lisa/Experiments/fmri/" + setting + "/"+ encoder +"/"
+    savedir = "/Users/lisa/Experiments/fmri/Analysis/" + encoder +"/"
+    for vs_type in vs:
+        for exp_type in exp:
+            print( exp_type, vs_type)
+            combine_results(resultdir,"*"+vs_type + "*_"+ exp_type + "*.txt",
+                            savedir + vs_type +"_"+ exp_type )
 
 
 
-
-
-# This method can be used to combine all evaluation files in result_dir with the same pattern and write them to outfile
+# This method combines all evaluation files in result_dir with the same pattern and writes them to outfile.
 # We assume, that the the metric name is in the first column and the results are in the second colum.
 # All files need to have the same number of results in the same order.
 def combine_results(result_dir, pattern, outfile):
@@ -43,35 +41,43 @@ def combine_results(result_dir, pattern, outfile):
     else:
         make_pairwise_plot(results, outfile)
 
-
 # Add column for average
     results = results.round(4)
     results['average'] = results.mean(numeric_only=True, axis=1).round(4)
     results['average'].iloc[0] = "Mean over all subjects"
     results.to_csv(outfile+".csv", sep="\t", header=False, index=False)
 
+# This is the code for the violin plot of the Kaplan data for the crossv
+# Results is a pandas dataframe.
+# It is very cumbersome, could be better automated,
+# if I figure out how to properly read in the data with headers and index.
+# When I have time...
 def make_cv_plot(results, outfile):
-    # This is the code for the violin plot of the Kaplan data.
-    # It is very cumbersome, could be better automated,
-    # if I figure out how to properly read in the data with headers and index.
-    # When I have time...
+    print(results)
+    # Read values we are interested in.
 
     r2sum = pd.to_numeric(results.iloc[2, 1:])
-    evsum = pd.to_numeric(results.iloc[4, 1:])
-    r2jainsum = pd.to_numeric(results.iloc[6, 1:])
+    evsum = pd.to_numeric(results.iloc[6, 1:])
+    r2jainsum = pd.to_numeric(results.iloc[10, 1:])
 
+    #For top 500 on test
+    # r2sum = pd.to_numeric(results.iloc[4, 1:])
+    # evsum = pd.to_numeric(results.iloc[8, 1:])
+    # r2jainsum = pd.to_numeric(results.iloc[12, 1:])
+    #Set up subplots for each value
     sns.set(style="whitegrid")
     fig, axs = plt.subplots(ncols=3, sharex='row', sharey="row")
-
     plot1 = sns.violinplot(y=r2sum, color="darkorange", ax=axs[0])
-    plot1.set(xlabel='R2', ylabel='Sum')
+    plot1.set(xlabel='$R^2$', ylabel='')
     plot1.xaxis.set_label_position('top')
     plot2 = sns.violinplot(y=evsum, color="darkcyan", ax=axs[1])
     plot2.set(xlabel='EV', ylabel='')
     plot2.xaxis.set_label_position('top')
     plot3 = sns.violinplot(y=r2jainsum, color="darkmagenta", ax=axs[2])
-    plot3.set(xlabel='R2_simple', ylabel="")
+    plot3.set(xlabel='$r^2$ simple', ylabel="")
     plot3.xaxis.set_label_position('top')
+
+    # Add empty outside plot to have one label for the subplots
     fig.add_subplot(132, frameon=False)
     # hide tick and tick label of the big axes
     plt.tick_params(labelcolor='none', top='off', bottom='off', left='off', right='off')
@@ -83,8 +89,7 @@ def make_cv_plot(results, outfile):
 
 def make_pairwise_plot(results, outfile):
 
-
-    # Pairwise plot
+    # Get results
     cosine = pd.to_numeric(results.iloc[1,1:])
     cosine_wehbe = pd.to_numeric(results.iloc[2, 1:])
     cosine_strict = pd.to_numeric(results.iloc[4, 1:])
@@ -95,7 +100,7 @@ def make_pairwise_plot(results, outfile):
     pearson_wehbe = pd.to_numeric(results.iloc[10, 1:])
     pearson_strict = pd.to_numeric(results.iloc[12, 1:])
 
-    print(cosine)
+    # Set up subplots
     sns.set(style="whitegrid")
     fig, axs = plt.subplots(ncols=9,  sharex='row', sharey="row")
 
@@ -127,7 +132,7 @@ def make_pairwise_plot(results, outfile):
     plot9.set(xlabel='R', ylabel="")
     plot9.xaxis.set_label_position('top')
 
-    # add empty outside plot to have one label for three subplots
+    # Add empty outside plots to have one label for three subplots
     fig.add_subplot(192, frameon=False)
     # hide tick and tick label of the big axes
     plt.tick_params(labelcolor='none', top='off', bottom='off', left='off', right='off')
@@ -148,20 +153,19 @@ def make_pairwise_plot(results, outfile):
     plt.show()
 
 
-#combine_results("/Users/lisa/Experiments/fmri/single_instance/Posts_ElmoEncoder/","*_2x2.txt",#"/Users/lisa/Experiments/fmri/Analysis/PostsElmoEncoder/Posts_all_ElmoEncoder_2x2.csv")
 
-def get_results(encoder, setting = "single_instance", vs =["on_train_ev", "none"], exp = [ "cv", "2x2"] ):
-    resultdir = "/Users/lisa/Experiments/fmri/" + setting + "/"+ encoder
-    savedir = "/Users/lisa/Experiments/fmri/Analysis/" + encoder
-    for vs_type in vs:
-        for exp_type in exp:
-            print( exp_type, vs_type)
-            combine_results(resultdir,"*"+vs_type + "*_"+ exp_type + "*.txt",
-                            savedir +"_"+ vs_type +"_"+ exp_type )
-
-get_results("WordsElmoEncoder")
-#get_results(HarryElmoEncoder", "Continuous")
-#get_results(HarryRandomEncoder",  "Continuous")
-#get_results("WordsRandomEncoder")
-
-#get_results("PostsRandomEncoder")
+#get_results("HarryRandomEncoder", "Continuous", vs =["forpaperon_train_ev"], exp =["cv"])
+#get_results("WordsElmoEncoder",  vs =["forpaper_on_train_ev"], exp =["cv"])
+get_results("WordsRandomEncoder",  vs =["forpaper_on_train_ev"], exp =["cv"])
+#get_results("PostsElmoEncoder",  vs =["testeval_none"], exp =["cv"])
+#get_results("PostsRandomEncoder",  vs =["forpaper_on_train_ev"], exp =["cv"])
+# get_results("WordsElmoEncoder")
+# get_results("WordsRandomEncoder")
+# get_results("PostsElmoEncoder")
+# get_results("PostsRandomEncoder")
+#
+#
+# get_results("HarryElmoEncoder", "Continuous")
+# get_results("HarryRandomEncoder", "Continuous")
+# get_results("AliceElmoEncoder", "Continuous")
+# get_results("AliceRandomEncoder", "Continuous")

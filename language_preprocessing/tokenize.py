@@ -1,5 +1,9 @@
 import spacy
 
+# Tokenization is needed for some of the datasets.
+# We use the spacy tokenizer because it is used in allennlp and corresponds well with Elmo.
+# You need to have the English model loaded.
+# Another tokenizer would probably make only little difference.
 
 class SpacyTokenizer(object):
     def __init__(self):

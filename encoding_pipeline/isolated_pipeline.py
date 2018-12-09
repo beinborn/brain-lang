@@ -38,7 +38,7 @@ class SingleInstancePipeline(Pipeline):
         if self.subject_ids == None:
             self.subject_ids = self.data.keys()
         print("Subjects: " + str(self.subject_ids))
-        for subject_id in self.subject_ids():
+        for subject_id in self.subject_ids:
             print("Start processing for SUBJECT: " + str(subject_id))
             subject_data = self.data[subject_id]
             self.evaluate_crossvalidation(subject_id, subject_data, experiment_name)
@@ -141,7 +141,7 @@ class SingleInstancePipeline(Pipeline):
         print("Results for all folds")
 
         evaluation_path = self.save_dir + self.pipeline_name + "/evaluation_" + str(
-            subject_id) + experiment_name + "_standard_cv .txt"
+            subject_id) + experiment_name + "_standard_cv.txt"
         logging.info("Writing evaluation to " + evaluation_path)
         save_evaluation(evaluation_path, experiment_name, subject_id, collected_results)
 

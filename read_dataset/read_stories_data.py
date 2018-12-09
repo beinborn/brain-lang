@@ -4,12 +4,11 @@ from openpyxl import load_workbook
 from .scan_elements import Block, ScanEvent
 from .read_fmri_data_abstract import FmriReader
 import spacy
-# from pymvpa import mvpa2.mappers as mappers
 
 # This method reads the data that I received from Jonas Kaplan.
-# It is described in Dehghani et al. 2017
+# It is described in Dehghani et al. (2017)
 # Paper: https://onlinelibrary.wiley.com/doi/epdf/10.1002/hbm.23814
-
+# They plan to publish the data eventually.
 
 # It consists of fMRI data from 90 subjects (30 from three different native languages each: English, Mandarin, Farsi)
 #  who read 40 short personal stories (145-155 words long).
@@ -27,15 +26,24 @@ class StoryDataReader(FmriReader):
         self.language = kwargs.get("language", "english")
         datafile = self.data_dir + "30_" + self.language + "_storydata_masked.hd5"
 
+
+        # Read stimuli and data
         data = h5py.File(datafile, 'r')
         datamatrix = np.array(data["__unnamed__"][()])
 
         stimulifile = self.data_dir + '/StoryKey.xlsx'
         stimuli = load_workbook(stimulifile).active
+
+        # Set subject ids
         if subject_ids == None:
             subject_ids = list(range(0, datamatrix.shape[0]))
+
         # First collect all stories
         stories = []
+
+        # We use spacy for tokenization because it is used by allennlp and thus goes well with the Elmo encoder.
+        #  Something else might also work.
+
         tok_model = spacy.load('en_core_web_sm')
         for story_id in range(2, stimuli.max_row + 1):
             # The first 7 columns contain irrelevant information
@@ -44,9 +52,12 @@ class StoryDataReader(FmriReader):
             seg2 = stimuli.cell(row=story_id, column=10).value.strip()
             seg3 = stimuli.cell(row=story_id, column=11).value.strip()
             story = seg1 + " " + seg2 + " " + seg3
+
+            # I noticed some double spaces.
             story = story.replace("  ", " ")
+
+            # Split the story into sentences
             sentences = [context.split(" ")] + self.segment_sentences(story, tok_model)
-            #print(sentences)
             stories.append(sentences)
 
         blocks = {}
@@ -62,9 +73,9 @@ class StoryDataReader(FmriReader):
                     for sentence_id in range(0,len(stories[block_index])):
                         for word_id in range(0,len(stories[block_index][sentence_id])):
                             stimulus_pointer.append((sentence_id,word_id))
+
                     # For this dataset, the brain activation has already been averaged over the whole story which consists of several sentences.
-                    # What do I put in stimulus_pointer?
-                    # I do not yet have a theory on whether it makes sense to include the context primer or not and where.
+                    # I do not yet have a strong opinion on whether it makes sense to include the context primer to the stimulus.
 
                     event = ScanEvent( str(subject),  stimulus_pointer, block_index, datamatrix[subject][block_index])
                     block = Block(str(subject), block_index, stories[block_index],[event])
@@ -81,9 +92,9 @@ class StoryDataReader(FmriReader):
             tokenized_sentences.append([tok.text for tok in sentence])
 
         return tokenized_sentences
+
 # def get_voxel_to_region_mapping(mapperfile, data):
-# TODO: I NEED PYMVPA FOR THIS
-# mapper = mvpa2.mappers.flatten.FlattenMapper(h5py.File(mapperfile, 'r'))
-# print(mapper)
-# print(mapper.reverse(data).shape())
-# return mapper.reverse(data)
+# This needs to be done with pymvpa2, which is really annoying to install if you are not on Ubuntu.
+# data = h5load(datafile)
+# mapper = h5load(mapperfile)
+# coordinates = mapper.reverse(data)

@@ -159,9 +159,9 @@ class ContinuousPipeline(Pipeline):
             current_results = evaluate_fold(self.metrics, test_predictions, test_targets)
 
             print("Results for fold " + str(fold))
-            print(str(current_results[""][1]))
+
             collected_results = update_results(current_results, collected_results)
-            #
+
             # pairwise_matches = pairwise_accuracy_randomized(test_predictions, test_targets, 1)
             # for key, value in pairwise_matches.items():
             #     print(key, value / float(len(test_predictions)))

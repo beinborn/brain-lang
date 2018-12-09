@@ -5,19 +5,14 @@ import numpy as np
 import random
 import scipy as sp
 from scipy.stats import pearsonr
-from scipy.stats import spearmanr
+
 from . import evaluation_util
 import math
 import logging
-def mse(predictions, targets):
-  """Mean Squared Error.
-  :param predictions: (n_samples, n_outputs)
-  :param targets: (n_samples, n_outputs)
-  :return:
-    a scalar which is mean squared error
-  """
-  return  mean_squared_error(predictions, targets)
 
+
+# This method is used to do the pairwise evaluation as described by Mitchell et al. (2008).
+# It is used in many encoding and decoding papers.
 def pairwise_matches(prediction1, target1, prediction2, target2):
     matches = {}
     for similarity_metric_fn in [cosine_similarity, euclidean_similarity, pearson_correlation]:
@@ -27,29 +22,33 @@ def pairwise_matches(prediction1, target1, prediction2, target2):
         false2 = similarity_metric_fn(prediction2, target1)
 
         metric_name = similarity_metric_fn.__name__
-        matches[metric_name +"_Mitchell"] = int((correct1 + correct2) > (false1 + false2))
+
+        # In the paper, we use slightly different names:
+        # Mitchell = sum, Wehbe1 = single, _Strict = strict
+        matches[metric_name + "__Mitchell"] = int((correct1 + correct2) > (false1 + false2))
         matches[metric_name + "_Wehbe1"] = int(correct1 > false1)
         matches[metric_name + "_Wehbe2"] = int(correct2 > false2)
-        matches[metric_name + "_Strict"] = int((correct1 >false1) & (correct2 > false2))
+        matches[metric_name + "_Strict"] = int((correct1 > false1) & (correct2 > false2))
 
     return matches
 
 
 # Choose a random correct prediction/target pair and select a random
-# incorrect prediction for comparison
+# incorrect prediction for comparison.
+# This method can be used, if you want to do normal cross-validation and not the weird leave-two out procedure.
 def pairwise_accuracy_randomized(predictions, targets, number_of_trials):
     # We do not want to compare directly neighbouring stimuli because of the hemodynamic response pattern
-    # The random sample should thus be at least 20 steps ahead
+    # The random sample should thus be at least 20 steps ahead (20 is a pretty long distance, we just want to be sure).
     constraint = 20
     collected_results = {}
     for trial in range(0, number_of_trials):
         for i in range(0, len(predictions)):
             prediction1 = predictions[i]
             target1 = targets[i]
-            index_for_pair = random.randint(0, len(predictions)-1)
+            index_for_pair = random.randint(0, len(predictions) - 1)
             # Get a random value that does not fall within the constrained region
             while abs(i - index_for_pair) < constraint:
-                index_for_pair = random.randint(0, len(predictions)-1)
+                index_for_pair = random.randint(0, len(predictions) - 1)
 
             prediction2 = predictions[index_for_pair]
             target2 = targets[index_for_pair]
@@ -64,65 +63,105 @@ def pairwise_accuracy_randomized(predictions, targets, number_of_trials):
     return averaged_results
 
 
-
-
-
-### EVALUATION METHODS ###
+# Evaluation metrics #
+# Many of these metrics are already implemented in scipy.
+# We just put them here for completeness.
 
 def cosine_similarity(vector1, vector2):
-
     return 1 - sp.spatial.distance.cosine(vector1, vector2)
+
 
 def euclidean_similarity(vector1, vector2):
     return 1 - sp.spatial.distance.euclidean(vector1, vector2)
 
-def pearson_correlation(vector1,vector2):
+
+def pearson_correlation(vector1, vector2):
     return pearsonr(vector1, vector2)[0]
 
 
 def r2_score_complex(predictions, targets):
-    r2values = r2_score( targets,predictions, multioutput="raw_values")
-    top_r2 = r2values[:500]
-    return r2values, np.mean(np.asarray(r2values)), np.sum(np.asarray(r2values)), top_r2, np.mean(np.asarray(top_r2)), np.sum(np.asarray(top_r2))
+    r2values = r2_score(targets, predictions, multioutput="raw_values")
+    nan = 0
+    adjusted_r2 = []
+    for score in r2values:
+        if math.isnan(score):
+            print("Found nan")
+            nan += 1
+            adjusted_r2.append(0.0)
+        else:
+            adjusted_r2.append(score)
+
+    top_r2 = sorted(adjusted_r2)[-500:]
+
+
+    return adjusted_r2, np.mean(np.asarray(adjusted_r2)), np.sum(np.asarray(adjusted_r2)), top_r2, np.mean(
+        np.asarray(top_r2)), np.sum(np.asarray(top_r2))
+
 
 def explained_variance_complex(predictions, targets):
-    ev_scores = explained_variance_score( targets,predictions, multioutput="raw_values")
-    top_ev = ev_scores[:500]
-    return ev_scores, np.mean(np.asarray(ev_scores)), np.sum(np.asarray(ev_scores)), top_ev, np.mean(np.asarray(top_ev)), np.sum(np.asarray(top_ev))
+    ev_scores = explained_variance_score(targets, predictions, multioutput="raw_values")
+    nan = 0
+    adjusted_ev = []
+    for score in ev_scores:
+        if math.isnan(score):
+            print("Found nan")
+            nan +=1
+            adjusted_ev.append(0.0)
+        else:
+            adjusted_ev.append(score)
+
+    top_ev = sorted(adjusted_ev)[-500:]
+    print("Unsorted explained variance: ")
+    print(adjusted_ev[0:50])
+    print("Sorted: ")
+    print(top_ev[:50])
+    return adjusted_ev, np.mean(np.asarray(adjusted_ev)), np.sum(np.asarray(adjusted_ev)), top_ev, np.mean(
+        np.asarray(top_ev)), np.sum(np.asarray(top_ev))
+
 
 def explained_variance(predictions, targets):
-    return explained_variance_score( targets,predictions, multioutput="raw_values")
+    return explained_variance_score(targets, predictions, multioutput="raw_values")
 
-# Not used
-# def pearson_complex(predictions, targets):
-#     correlations_per_voxel = []
-#     for voxel_id in range(0,len(targets[0])):
-#         correlation = pearsonr(predictions[:,voxel_id],  targets[:, voxel_id])[0]
-#         correlations_per_voxel.append(correlation)
-#
-#     return np.asarray(correlations_per_voxel), np.mean(np.asarray(correlations_per_voxel)), np.sum(np.asarray(correlations_per_voxel))
+
+# Jain & Huth (2008) calculate R2 as abs(correlation) * correlation
+
 
 def pearson_jain_complex(predictions, targets):
     corr_squared_per_voxel = []
-    for voxel_id in range(0,len(targets[0])):
-        correlation = pearsonr(predictions[:,voxel_id],  targets[:, voxel_id])[0]
-        if(math.isnan(correlation)):
+    nan = 0
+    for voxel_id in range(0, len(targets[0])):
+        correlation = pearsonr(predictions[:, voxel_id], targets[:, voxel_id])[0]
+
+        # This occurs when we find a voxel that is constantly 0 in the test data, but has not been constant in the training data.
+        if (math.isnan(correlation)):
+            print("\n\n!!!!")
             print("Encountered NaN value")
             print("Voxel: " + str(voxel_id))
             print("Predictions")
-            print(predictions[:,voxel_id])
+            print(predictions[:, voxel_id])
             print("Targets")
-            print(targets[:,voxel_id])
-        corr_squared = abs(correlation) * correlation
-
+            print(targets[:, voxel_id])
+            corr_squared = 0.0
+            nan += 1
+        else:
+            corr_squared = abs(correlation) * correlation
         corr_squared_per_voxel.append(corr_squared)
+    print("Number of NaN: " + str(nan))
+    top_corr = sorted(corr_squared_per_voxel)[-500:]
 
-    top_corr = corr_squared_per_voxel[:500]
-    print(top_corr)
-    print(np.asarray(top_corr))
-    return np.asarray(corr_squared_per_voxel), np.mean(np.asarray(corr_squared_per_voxel)), np.sum(np.asarray(corr_squared_per_voxel), np.asarray(top_corr), np.mean(np.asarray(top_corr)), np.sum(np.asarray(top_corr)))
+    return np.asarray(corr_squared_per_voxel), np.mean(np.asarray(corr_squared_per_voxel)), np.sum(
+        np.asarray(corr_squared_per_voxel)), np.asarray(top_corr), np.mean(np.asarray(top_corr)), np.sum(
+        np.asarray(top_corr))
 
 
+def mse(predictions, targets):
+    """Mean Squared Error.
+    :param predictions: (n_samples, n_outputs)
+    :param targets: (n_samples, n_outputs)
+    :return:
+      a scalar which is mean squared error
+    """
+    return mean_squared_error(predictions, targets)
 
 
 # Methods for calculating dissimilarity matrices
@@ -158,6 +197,3 @@ def compute_distance_over_dists(x, C):
         spearman[i][j] = np.mean(corr_s)
         pearson[i][j] = np.mean(corr_p)
     return spearman, pearson, kullback
-
-
-

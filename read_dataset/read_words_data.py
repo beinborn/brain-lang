@@ -2,10 +2,13 @@ import numpy as np
 import scipy.io
 from .scan_elements import Block, ScanEvent
 from .read_fmri_data_abstract import FmriReader
-from scipy.stats.stats import pearsonr
 import os.path
 import pickle
 
+# This class reads the words data from Mitchell et al., 2008
+# Paper: http://www.cs.cmu.edu/~tom/pubs/science2008.pdf
+# Data: http://www.cs.cmu.edu/afs/cs/project/theo-73/www/science2008/data.html
+# Make sure to also check the supplementary material.
 
 class WordsReader(FmriReader):
 
@@ -61,9 +64,6 @@ class WordsReader(FmriReader):
                 n+=1
             blocks[subject_id] = blocks_for_subject
 
-
-
-
         return blocks
 
     def get_voxel_to_region_mapping(self, subject_id):
@@ -71,11 +71,12 @@ class WordsReader(FmriReader):
         roi_file = os.path.join(dirname, "additional_data/mitchell_roi_mapping/roi_P" + str(subject_id) + ".txt")
         roi_mapping = {}
         voxel_index = 0
+
         with open(roi_file,"r") as roi_data:
             for line in roi_data:
                 roi_mapping[voxel_index] = line.strip()
                 voxel_index +=1
-        #print(roi_mapping)
+
         return roi_mapping
 
     def get_voxel_to_xyz_mapping(self, subject_id):
@@ -87,13 +88,20 @@ class WordsReader(FmriReader):
             for line in coordinates:
                 xyz_mapping[voxel_index] = tuple([float(x) for x in (line.strip().split("\t"))])
                 voxel_index += 1
-        # print(roi_mapping)
         return xyz_mapping
+
     def get_stable_voxels_for_fold(self, subject_id, test_stimuli):
+
+        # Order of the two test words does not matter
         key1 = test_stimuli[0] + "_" + test_stimuli[1]
         key2 = test_stimuli[1] + "_" + test_stimuli[0]
+
+        # We set the subject id, so that we do not have to load the dictionary every time.
+        # It might cause some unexpected side effects, though, if you rely on the subject_ids somewhere else.
         if not self.current_subject == subject_id:
             self.current_subject = subject_id
+
+            # Read dictionary, key: testword1_testword2 value: list of ids for stable voxels
             dirname = os.path.dirname(__file__)
             voxel_file = os.path.join(dirname, "additional_data/mitchell_stable_voxels/stable_voxels_" + str(
                 subject_id) + "all.pickle")
@@ -103,8 +111,8 @@ class WordsReader(FmriReader):
 
         if key1 in self.stable_voxels.keys():
             return self.stable_voxels[key1]
+
         elif key2 in self.stable_voxels.keys():
-            print("Key2")
             return self.stable_voxels[key2]
         else:
             raise ValueError("Stable voxels are not available for pair: " + key1)

@@ -5,7 +5,7 @@ from .read_fmri_data_abstract import FmriReader
 from language_preprocessing.tokenize import SpacyTokenizer
 import logging
 
-# This method reads the Harry Potter data that was published by Wehbe et al. 2014
+# This class reads the Harry Potter data that was published by Wehbe et al. 2014
 # Paper: http://aclweb.org/anthology/D/D14/D14-1030.pdf
 # Data: http://www.cs.cmu.edu/afs/cs/project/theo-73/www/plosone/
 

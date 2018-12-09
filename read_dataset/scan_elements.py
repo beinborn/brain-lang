@@ -1,5 +1,7 @@
 import numpy as np
 
+# These classes are used to align scans and stimuli in the reader.
+# Note: the reader aligns them by time stamp, a delay can be added in the experimental pipeline.
 
 class ScanEvent(object):
     def __init__(self, subject_id, stimulus_pointers, timestamp, scan):
@@ -36,6 +38,9 @@ class Block(object):
         self.sentences = sentences
         self.scan_events = scan_events
         self.voxel_to_region_mapping = voxel_to_region_mapping
+
+    # In our experiments, these methods are not used, but they might be useful when modeling the context differently.
+    # They are not well tested, though.
 
     def get_sentence_context(self, scan_event, tokenizer, past_window=0, future_window=0):
         """

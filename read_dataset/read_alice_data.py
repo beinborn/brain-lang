@@ -6,25 +6,34 @@ from .read_fmri_data_abstract import FmriReader
 from language_preprocessing.tokenize import SpacyTokenizer
 import os
 
+#  This method reads the "Alice in Wonderland" data described in Brennan et al. (2016).
+# Paper:https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4893969/
+# Data:  https://sites.lsa.umich.edu/cnllab/2016/06/11/data-sharing-fmri-timecourses-story-listening/
+
 class AliceDataReader(FmriReader):
     def __init__(self, data_dir):
         super(AliceDataReader, self).__init__(data_dir)
         self.block_splits = [59, 120, 168, 226, 288]
     def read_all_events(self, subject_ids=None, **kwargs):
         blocks = {}
+        # There are two region of interest sizes, we just 10 mm.
         self.roi_size = kwargs.get("roi", "10")
+
+        # Read in the data and the stimuli.
         scan_dir = self.data_dir + "alice_data_shared/" + str(self.roi_size) + "mm/"
         text_dir = self.data_dir + "alice_stim_shared/"
 
         stimuli = self.read_stimuli(text_dir)
-        tokens = [word for (time, word) in stimuli]
         sentences, stimuli_pointers = self.get_pointers(stimuli)
+
+        # Make sure everything was read correctly.
         print("Number of stimuli: " + str( len(stimuli)))
         print(stimuli[:9])
         print("Number of stimuli pointers: " + str(len(stimuli_pointers)))
         print(stimuli_pointers[:9])
         print("Last pointer: " + str(stimuli_pointers[-1]))
         print("Number of sentences: " + str(len(sentences)))
+
         # Set subject_ids
         if subject_ids is None:
             subject_ids = listdir(scan_dir)
@@ -32,6 +41,7 @@ class AliceDataReader(FmriReader):
                 filename = subject_ids[i]
                 subject_ids[i] = int(re.search(r"\d+", filename).group())
 
+        # Skip subject 33
         for subject_id in subject_ids:
             if subject_id == 33:
                 continue
@@ -42,13 +52,15 @@ class AliceDataReader(FmriReader):
             scan_time = 0.0
             last_scan_time = 0.0
             scan_events = []
-            previous_sent = 0
+
 
             # Note: When we align scans and stimuli, the last two sentences are missing because
             # with 362 scans and a TR of 2 seconds, we only have 724 seconds of data
             # but the stimuli extend until second 740
+            # In the paper, they say that participants listened to the "first 12 minutes" of the chapter.
             # We can only assume that the rest of the story was discarded.
             # TODO: I send John Brennan a mail: waiting for a response.
+
             for scan in scans:
                 pointers_for_scan = [pointer for (word_time, pointer) in stimuli_pointers if
                                      word_time < scan_time and word_time > last_scan_time]
@@ -71,9 +83,9 @@ class AliceDataReader(FmriReader):
         # --- PROCESS TEXT STIMULI --- #
         # This is a textgrid file. Processing is not very elegant, but works for this particular example.
         # The text does not contain any punctuation except for apostrophes, only words!
-        # Apostrophes are separated from the previous word, maybe I should remove the whitespace for preprocessing?
+        # Apostrophes are separated from the previous word, this might not be ideal for some language processing models.
         # We have 12 min of audio/text data.
-        # We save the stimuli in an array because word times are already ordered
+        # We can save the stimuli in a list because word times are already ordered.
         stimuli = []
 
         with open(textdata_file, 'r') as textdata:
@@ -86,7 +98,7 @@ class AliceDataReader(FmriReader):
                         xmin = float(line.split(" = ")[1])
                     if line.startswith("text"):
                         word = line.split(" = ")[1].strip("\"")
-                        # Praat words: "sp" = speech pause, we use an empty stimulus instead
+                        #  "sp" stands for speech pause, we use an empty stimulus instead.
                         if word == "sp":
                             word = ""
                         stimuli.append([xmin, word.strip()])
@@ -97,7 +109,7 @@ class AliceDataReader(FmriReader):
         # --- PROCESS FMRI SCANS --- #
         # We have 361 fmri scans.
         # They have been taken every two seconds.
-        # One scan consists of entries for 6 regions --> much more condensed data than Harry Potter
+        # One scan consists of entries for 6 regions --> much more condensed data than the raw voxel activations.
 
         with (open(scan_dir + subject, 'r')) as subjectdata:
             scans = []
@@ -117,7 +129,8 @@ class AliceDataReader(FmriReader):
     # was an awful experience. I would not do it again.
     # The transcripts contain so many deviations from the original (e.g. missing words, typos etc)
     # which I had to fix manually.
-    # I strongly recommend to use the modified version of the text alice_transcription_with_punctuation.txt in this project.
+    # I strongly recommend to use the modified version of the text alice_transcription_with_punctuation.txt in this project
+    # and not change anything in this method.
     def get_pointers(self, stimuli):
         dirname = os.path.dirname(__file__)
         transcription_file = os.path.join(dirname, "additional_data/alice_transcription_with_punctuation.txt")

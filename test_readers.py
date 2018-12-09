@@ -43,6 +43,7 @@ import numpy as np
 #     # print("Word: \n" + str(sentences[0]))
 #
 # # ---- ALICE DATA -----
+
 # # Make sure to get the data at https://drive.google.com/file/d/0By_8Ci8eoDI4Q3NwUEFPRExIeG8/view
 # # # Adjust the dir!
 # # alice_dir = "/Users/lisa/Corpora/alice_data/"

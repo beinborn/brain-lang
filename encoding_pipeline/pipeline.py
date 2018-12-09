@@ -68,8 +68,8 @@ class Pipeline(object):
             # take intersection of predictive and non-constant voxels
             if (len(varied_voxels) < all_voxels):
 
-                #selected_voxels = np.asarray(selected_voxels)[:, varied_voxels]
                 selected_voxels= [voxel for voxel in selected_voxels if voxel in set(varied_voxels)]
+
 
             # selected_voxels = sorted(set(varied_voxels) & set(predictive_voxels), key=predictive_voxels.index)
             # return top n, list is sorted in ascending order so we take from the end
