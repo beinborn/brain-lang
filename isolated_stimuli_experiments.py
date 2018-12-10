@@ -21,20 +21,20 @@ if __name__ == '__main__':
     kaplan_reader = StoryDataReader(data_dir=kaplan_dir)
     mapper = RegressionMapper(alpha=10.0)
     #
-    #stimuli_encoder = ElmoEncoder(save_dir)
+    stimuli_encoder = ElmoEncoder(save_dir)
     random_encoder = RandomEncoder(save_dir)
 
-    for encoder in [  random_encoder]:
+    for encoder in [ stimuli_encoder]:
         pipeline_name = "Words" + encoder.__class__.__name__
         mitchell_pipeline = SingleInstancePipeline(mitchell_reader, encoder, mapper, pipeline_name, save_dir=save_dir)
-        #mitchell_pipeline.get_all_predictive_voxels("test")
+        mitchell_pipeline.get_all_predictive_voxels("test")
 
-        voxel_selections = ["on_train_ev"]
-        for v_selection in voxel_selections:
-            mitchell_pipeline.voxel_selection = v_selection
+        # voxel_selections = ["none"]
+        # for v_selection in voxel_selections:
+        #     mitchell_pipeline.voxel_selection = v_selection
             # #mitchell_pipeline.runRSA("rsa")
             # #mitchell_pipeline.pairwise_procedure( v_selection + "_pairwise")
-            mitchell_pipeline.standard_crossvalidation("forpaper_" +v_selection)
+            #mitchell_pipeline.run_standard_crossvalidation("forpaper_" + v_selection)
 
             # pipeline_name = "Posts" + encoder.__class__.__name__
             # kaplan_pipeline = SingleInstancePipeline(kaplan_reader, encoder, mapper, pipeline_name, save_dir=save_dir)

@@ -8,7 +8,7 @@ import pickle
 # It takes very long to compute for all possible test pairs.
 # We implemented it to our best understanding according to the descriptions in their supplementary material,
 # but no guarantees that this is what they used.
-# We provide the results at additional_data/mitchell_stable_voxels
+# We provide the results at additional_data/mitchell_stable_voxels, so that you don't have to re-run it.
 
 #  For the other datasets, stable voxels cannot be calculated.
 

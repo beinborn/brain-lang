@@ -10,7 +10,11 @@ from . import evaluation_util
 import math
 import logging
 
+# This is a collection of evaluation metrics that can be used for evaluating encoding and decoding experiments.
+# We re-use implementations from sklearn and scipy.
 
+
+# ----- Evaluation procedures ------ #
 # This method is used to do the pairwise evaluation as described by Mitchell et al. (2008).
 # It is used in many encoding and decoding papers.
 def pairwise_matches(prediction1, target1, prediction2, target2):
@@ -34,7 +38,7 @@ def pairwise_matches(prediction1, target1, prediction2, target2):
 
 
 # Choose a random correct prediction/target pair and select a random
-# incorrect prediction for comparison.
+# incorrect prediction for comparison. Repeat number_of_trials times.
 # This method can be used, if you want to do normal cross-validation and not the weird leave-two out procedure.
 def pairwise_accuracy_randomized(predictions, targets, number_of_trials):
     # We do not want to compare directly neighbouring stimuli because of the hemodynamic response pattern
@@ -63,9 +67,7 @@ def pairwise_accuracy_randomized(predictions, targets, number_of_trials):
     return averaged_results
 
 
-# Evaluation metrics #
-# Many of these metrics are already implemented in scipy.
-# We just put them here for completeness.
+# ----- Evaluation metrics ------ #
 
 def cosine_similarity(vector1, vector2):
     return 1 - sp.spatial.distance.cosine(vector1, vector2)
@@ -79,10 +81,18 @@ def pearson_correlation(vector1, vector2):
     return pearsonr(vector1, vector2)[0]
 
 
-def r2_score_complex(predictions, targets):
+# Complex means that we return the raw values, the average and the mean.
+# We repeat this and report the results for only the top n voxels.
+
+def r2_score_complex(predictions, targets, n = 500):
     r2values = r2_score(targets, predictions, multioutput="raw_values")
     nan = 0
     adjusted_r2 = []
+
+    # Constant voxels should have been removed in voxel selection.
+    # It might occur though, that we find a voxel that is constantly 0 in the test data,
+    # but has not been constant in the training data.
+    # We need to check for these.
     for score in r2values:
         if math.isnan(score):
             print("Found nan")
@@ -91,18 +101,22 @@ def r2_score_complex(predictions, targets):
         else:
             adjusted_r2.append(score)
 
-    top_r2 = sorted(adjusted_r2)[-500:]
+    top_r2 = sorted(adjusted_r2)[-n:]
 
 
     return adjusted_r2, np.mean(np.asarray(adjusted_r2)), np.sum(np.asarray(adjusted_r2)), top_r2, np.mean(
         np.asarray(top_r2)), np.sum(np.asarray(top_r2))
 
 
-def explained_variance_complex(predictions, targets):
+def explained_variance_complex(predictions, targets, n=500):
     ev_scores = explained_variance_score(targets, predictions, multioutput="raw_values")
     nan = 0
     adjusted_ev = []
     for score in ev_scores:
+        # Constant voxels should have been removed in voxel selection.
+        # It might occur though, that we find a voxel that is constantly 0 in the test data,
+        # but has not been constant in the training data.
+        # We need to check for these.
         if math.isnan(score):
             print("Found nan")
             nan +=1
@@ -110,11 +124,8 @@ def explained_variance_complex(predictions, targets):
         else:
             adjusted_ev.append(score)
 
-    top_ev = sorted(adjusted_ev)[-500:]
-    print("Unsorted explained variance: ")
-    print(adjusted_ev[0:50])
-    print("Sorted: ")
-    print(top_ev[:50])
+    top_ev = sorted(adjusted_ev)[-n:]
+
     return adjusted_ev, np.mean(np.asarray(adjusted_ev)), np.sum(np.asarray(adjusted_ev)), top_ev, np.mean(
         np.asarray(top_ev)), np.sum(np.asarray(top_ev))
 
@@ -123,16 +134,18 @@ def explained_variance(predictions, targets):
     return explained_variance_score(targets, predictions, multioutput="raw_values")
 
 
-# Jain & Huth (2008) calculate R2 as abs(correlation) * correlation
-
-
+# Jain & Huth (2018) calculate R2 as abs(correlation) * correlation
+# With this metric, results are more likely to be positive than with R2 or EV.
 def pearson_jain_complex(predictions, targets):
     corr_squared_per_voxel = []
     nan = 0
     for voxel_id in range(0, len(targets[0])):
         correlation = pearsonr(predictions[:, voxel_id], targets[:, voxel_id])[0]
 
-        # This occurs when we find a voxel that is constantly 0 in the test data, but has not been constant in the training data.
+        # Constant voxels should have been removed in voxel selection.
+        # It might occur though, that we find a voxel that is constantly 0 in the test data,
+        # but has not been constant in the training data.
+        # We need to check for these.
         if (math.isnan(correlation)):
             print("\n\n!!!!")
             print("Encountered NaN value")
@@ -153,7 +166,35 @@ def pearson_jain_complex(predictions, targets):
         np.asarray(corr_squared_per_voxel)), np.asarray(top_corr), np.mean(np.asarray(top_corr)), np.sum(
         np.asarray(top_corr))
 
+def pearson_complex(predictions, targets, n = 500):
+    correlations_per_voxel = []
+    nan = 0
+    for voxel_id in range(0,len(targets[0])):
 
+        # Constant voxels should have been removed in voxel selection.
+        # It might occur though, that we find a voxel that is constantly 0 in the test data,
+        # but has not been constant in the training data.
+        # We need to check for these.
+        if math.isnan(correlation):
+            print("\n\n!!!!")
+            print("Encountered NaN value")
+            print("Voxel: " + str(voxel_id))
+            print("Predictions")
+            print(predictions[:, voxel_id])
+            print("Targets")
+            print(targets[:, voxel_id])
+        correlation = 0.0
+        nan += 1
+    else:
+        corr_squared = abs(correlation) * correlation
+    correlations_per_voxel.append(corr_squared)
+    print("Number of NaN: " + str(nan))
+    top_corr = sorted(correlations_per_voxel)[-500:]
+    correlations_per_voxel.append(correlation)
+    return np.asarray(correlations_per_voxel), np.mean(np.asarray(correlations_per_voxel)), np.sum(np.asarray(correlations_per_voxel)),  np.asarray(top_corr), np.mean(np.asarray(top_corr)), np.sum(np.asarray(top_corr))
+
+
+# This is used for evaluating the mapping model.
 def mse(predictions, targets):
     """Mean Squared Error.
     :param predictions: (n_samples, n_outputs)
@@ -163,10 +204,12 @@ def mse(predictions, targets):
     """
     return mean_squared_error(predictions, targets)
 
+# ----- Representational similarity analysis ------ #
 
 # Methods for calculating dissimilarity matrices
+# In the original papers, they are called RDMs
 def get_dists(data):
-    logging.info("Calculating dissimilarity matrices")
+    logging.info("Calculating dissimilarity matrix")
     x = {}
     C = {}
 
@@ -177,10 +220,12 @@ def get_dists(data):
 
     return x, C
 
-
+# Compare two or more RDMs
 def compute_distance_over_dists(x, C):
     logging.info("Calculate ")
     keys = np.asarray(list(x.keys()))
+
+    # We calculate three different measures.
     kullback = np.zeros((len(keys), len(keys)))
     spearman = np.zeros((len(keys), len(keys)))
     pearson = np.zeros((len(keys), len(keys)))

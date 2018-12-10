@@ -16,6 +16,8 @@ import logging
 # The chapter was presented in four blocks of app. 12 minutes.
 # Voxel size: 3 x 3 x 3
 
+# Note: for future experiments, check the comments on sentence tokenization below.
+
 
 class HarryPotterReader(FmriReader):
 
@@ -50,14 +52,14 @@ class HarryPotterReader(FmriReader):
         # Data is in matlab format
         # Data structure is a dictionary with keys data, time, words, meta
         # Shapes for subject 1, block 1: data (1351,37913), time (1351,2) words (1, 5176)
-        print("Load file")
+        logging.info("Load file")
         datafile = scipy.io.loadmat(self.data_dir + "subject_" + str(subject_id) + ".mat")
 
         # We have one scan every 2 seconds
         timedata = datafile["time"]
         scan_times = timedata[:, 0]
 
-        # We have four blocks. One block includes approx. 12 minutes
+        # We have four blocks. One block includes approx. 12 minutes of stimuli
         blocks = timedata[:, 1]
 
         # find first and last scan time of current block
@@ -110,7 +112,7 @@ class HarryPotterReader(FmriReader):
                 tokenized_words = tokenizer.tokenize(word)
                 for token in tokenized_words:
                     if len(sentences) > 0:
-                        if is_beginning_of_new_sentence(sentences[sentence_id], token):
+                        if self.is_beginning_of_new_sentence(sentences[sentence_id], token):
                             sentence_id += 1
                             token_id = 0
 
@@ -167,20 +169,27 @@ class HarryPotterReader(FmriReader):
          # print(name[0])
         return voxel_to_xyz
 
-# This is a quite naive sentence boundary detection that only works for this dataset.
-def is_beginning_of_new_sentence(sentence, newword):
-    seentext = ' '.join(sentence)
-    sentence_punctuation = (".", "?", "!", ".\"", "!\"", "?\"", "+")
-    # I am ignoring the following exceptions, because they are unlikely to occur in fiction text:
-    # "etc.", "e.g.", "cf.", "c.f.", "eg.", "al.
-    exceptions = ("Mr.", "Mrs.")
-    if seentext.endswith(exceptions):
-        return False
-    # This would not work if everything is lowercased!
-    if seentext.endswith(sentence_punctuation) and not newword.islower() and newword is not ".":
-        return True
-    else:
-        return False
+    # This is a quite naive sentence boundary detection that only works for this dataset.
+    # Please note: after the experiments, I figured out that in the data, they sometimes use "..." and sometimes "…" for the stimuli
+    # The first one is interpreted as a sentence boundary by this code and the second isn't.
+    # This leads to a slightly different number of sentences per subject.
+    # I also noticed that dashes are sometimes "-" and sometimes "--"
+    # As I generated the embeddings for each subject separately, it has no effect on the results.
+    # But I recommend to adjust this for future experiments.
+    # Then you can get the sentence embeddings only once (this is the part that takes longest in the experiments).
+    def is_beginning_of_new_sentence(self, sentence, newword):
+        seentext = ' '.join(sentence)
+        sentence_punctuation = (".", "?", "!", ".\"", "!\"", "?\"", "+")
+        # I am ignoring the following exceptions, because they are unlikely to occur in fiction text:
+        # "etc.", "e.g.", "cf.", "c.f.", "eg.", "al.
+        exceptions = ("Mr.", "Mrs.")
+        if seentext.endswith(exceptions):
+            return False
+        # This would not work if everything is lowercased!
+        if seentext.endswith(sentence_punctuation) and not newword.islower() and newword is not ".":
+            return True
+        else:
+            return False
 
 
 

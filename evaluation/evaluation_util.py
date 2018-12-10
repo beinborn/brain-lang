@@ -2,6 +2,10 @@
 import numpy as np
 import os
 import pickle
+
+# These methods are used to collect and save the evaluations per fold.
+
+# Collect results in a list
 def append_to_collected_results( current_results, collected_results):
     for key, value in current_results.items():
 
@@ -17,6 +21,7 @@ def append_to_collected_results( current_results, collected_results):
     return collected_results
 
 
+# Add results to previous results
 def add_to_collected_results( current_results, collected_results):
     for key, value in current_results.items():
 
@@ -28,6 +33,8 @@ def add_to_collected_results( current_results, collected_results):
     return collected_results
 
 
+# Update a dictionary of results.
+# This method is very specific, might have to be updated, in case you change the evaluation setup.
 def update_results(current_results,collected_results):
     for key, value in current_results.items():
         i = 0
@@ -44,6 +51,9 @@ def update_results(current_results,collected_results):
                 i += 1
     return collected_results
 
+# Some evaluation metrics do not work with constant rows.
+# Careful: this method messes up the voxel ids.
+# In case you need them, use voxel_preprocessing.select_voxels.select_varied_voxels instead.
 def delete_constant_rows(predictions, targets):
     index = 0
     num_deleted = 0
@@ -57,6 +67,7 @@ def delete_constant_rows(predictions, targets):
     return predictions, targets
 
 
+# Save results for the pairwise evaluation procedure.
 def save_pairwise_evaluation(evaluation_file, evaluation_name, subject_id, collected_matches,
                              number_of_pairs):
     path = os.path.dirname(evaluation_file)
@@ -72,6 +83,7 @@ def save_pairwise_evaluation(evaluation_file, evaluation_name, subject_id, colle
             print(accuracy)
             eval_file.write(str(key) + "\t" + str(accuracy) + "\n")
 
+# Save the evaluation for voxelwise results.
 def save_evaluation(evaluation_file, evaluation_name, subject_id, collected_results):
     path = os.path.dirname(evaluation_file)
     os.makedirs(os.path.dirname(evaluation_file), exist_ok=True)

@@ -1,5 +1,6 @@
 from evaluation.metrics import mse
 
+# Abstract class for the mapping model.
 class BasicMapper(object):
   def __init__(self):
     pass

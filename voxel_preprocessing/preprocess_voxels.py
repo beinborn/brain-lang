@@ -14,7 +14,7 @@ def detrend(data, t_r, standardize=False):
                                 high_pass=0.005, t_r=t_r, ensure_finite=False)
 
 
-# This method reduces the mean over all subjects.
+# This method reduces the mean activation over all stimuli from each voxel.
 # A related way of preprocessing is to subtract the activation of the resting scans from the stimuli scans.
 def reduce_mean(data):
     return data - np.mean(data, axis=0)

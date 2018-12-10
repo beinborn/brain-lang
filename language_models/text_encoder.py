@@ -9,6 +9,8 @@ import logging
 # See https://allennlp.org/elmo for details.
 # The three methods for getting embeddings for sentences, words, stories are slightly repetitive.
 # They could be combined into a single method, but I found it easier to keep them separate for debugging.
+# Note: If pickle files exist in the embedding dir, the encoder automatically reads them.
+# Make sure to delete them, if you want new embeddings.
 
 class TextEncoder(object):
     def __init__(self, embedding_dir):

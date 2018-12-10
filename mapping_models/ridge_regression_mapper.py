@@ -2,8 +2,9 @@ from sklearn.linear_model import *
 from mapping_models.basic_mapper import BasicMapper
 import numpy as np
 
+# The standard ridge regression model for mapping stimuli to scans.
 class RegressionMapper(BasicMapper):
-  def __init__(self, alpha = 100, model_fn=Ridge):
+  def __init__(self, alpha = 1.0, model_fn=Ridge):
     super(RegressionMapper, self).__init__()
     self.alpha = alpha
     self.model_fn = model_fn
@@ -21,7 +22,6 @@ class RegressionMapper(BasicMapper):
 
     loss = None
     if targets is not None:
-      # How is the loss computed?
       loss = self.compute_loss(predictions, targets)
     print("Loss: " + str(loss))
     return {'predictions': predictions,

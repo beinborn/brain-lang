@@ -7,6 +7,9 @@ import logging
 # Every word is assigned a random (but fixed) vector of the requested dimensionality.
 # Sentence embeddings are a combination of token embeddings.
 # Story embeddings are averaged over the averages of the sentence embeddings.
+# Note: If pickle files exists in the embedding dir, the encoder automatically reads them.
+# Make sure to delete them, if you want new embeddings.
+
 class RandomEncoder(object):
     def __init__(self, embedding_dir):
         self.embedding_dir = embedding_dir
@@ -91,8 +94,8 @@ class RandomEncoder(object):
                     sentence_means.append(np.mean(np.asarray(sentence), axis = 0))
                 story_embedding = np.mean(np.asarray(sentence_means), axis = 0)
 
-                # We take the mean over the sentences.
-                # fMRI images in the Kaplan data are also averaged over the sentences, so that should be okay.
+                # We take the mean over the sentences because
+                # fMRI images in the Kaplan data are also averaged over the sentences.
                 story_embeddings.append(story_embedding)
                 i += 1
 

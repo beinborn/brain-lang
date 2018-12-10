@@ -2,6 +2,7 @@ import numpy as np
 import logging
 
 
+# Reduce the voxels to the set of interesting voxel ids
 def reduce_voxels(list_of_scans, interesting_voxel_ids):
 
     if len(interesting_voxel_ids) < len(list_of_scans[0]):
@@ -21,7 +22,7 @@ def evaluate_fold(metrics, predictions, targets):
 
 
 def preprocess_voxels(voxel_preprocessings, scans):
-    # Important: Order of preprocessing matters
+    # Important note: Order of preprocessing matters!
     for voxel_preprocessing_fn, args in voxel_preprocessings:
         scans = voxel_preprocessing_fn(scans, **args)
     return scans

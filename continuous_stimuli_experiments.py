@@ -11,9 +11,12 @@ from mapping_models.ridge_regression_mapper import RegressionMapper
 from voxel_preprocessing.preprocess_voxels import *
 import logging
 
-harry_dir = "/Users/lisa/Corpora/HarryPotter/"
-alice_dir = "/Users/lisa/Corpora/alice_data/"
-save_dir = "/Users/lisa/Experiments/fmri/Continuous/"
+# This contains the experimental code for the NAACL submission.
+# Make sure to adjust the paths
+user_dir = "/Users/USERNAME/"
+harry_dir = user_dir + "/Corpora/HarryPotter/"
+alice_dir = user_dir + "/Corpora/alice_data/"
+save_dir = user_dir +"Experiments/fmri/Continuous/"
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
@@ -34,27 +37,23 @@ if __name__ == '__main__':
 
     # Set up the experiments
 
-    for encoder in [ random_encoder]:
+    for encoder in [ stimuli_encoder]:
 
+        # --- Harry experiments --
         pipeline_name = "Harry" + encoder.__class__.__name__
         harry_experiment = ContinuousPipeline(harry_reader, encoder, mapper, pipeline_name, save_dir=save_dir)
         harry_experiment.voxel_preprocessings = [(detrend, {'t_r': 2.0}), (reduce_mean, {})]
 
-
-        voxel_selections = ["on_train_ev" ]
+        voxel_selections = ["none", "on_train_ev" ]
         for v_selection in voxel_selections:
             harry_experiment.voxel_selection = v_selection
-            harry_experiment.process("forpaper" +v_selection)
-            #harry_experiment.runRSA("rsa_")
-        #harry_experiment.get_all_predictive_voxels("test")
+            harry_experiment.process("NAACL_" +v_selection)
+            harry_experiment.runRSA("rsa_")
 
-    # harry_experiment.process("test" + v_selection)
-    #
-        # pipeline_name = "Alice" + encoder.__class__.__name__
-        # alice_experiment = ContinuousPipeline(alice_reader, encoder, mapper, pipeline_name, save_dir=save_dir)
-        # # # The alice dataset only consists of activation values for six regions
-        #alice_experiment.voxel_selection = "none"
-        #alice_experiment.voxel_preprocessings = [(reduce_mean, {})]
-        #alice_experiment.runRSA("rsa")
-     #   alice_experiment.process("testevaluation" +v_selection)
-    # alice_experiment.process("standard512_reduce_mean")
+        # --- Alice experiments --
+        pipeline_name = "Alice" + encoder.__class__.__name__
+        alice_experiment = ContinuousPipeline(alice_reader, encoder, mapper, pipeline_name, save_dir=save_dir)
+        alice_experiment.voxel_selection = "none"
+        alice_experiment.voxel_preprocessings = [(reduce_mean, {})]
+        alice_experiment.runRSA("rsa")
+
