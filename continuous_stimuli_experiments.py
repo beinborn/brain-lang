@@ -11,8 +11,8 @@ from mapping_models.ridge_regression_mapper import RegressionMapper
 from voxel_preprocessing.preprocess_voxels import *
 import logging
 
-# This contains the experimental code for the NAACL submission.
-# Make sure to adjust the paths
+# This contains the experimental code for the NAACL submission for the continuous stimuli.
+#  Make sure to adjust the paths
 user_dir = "/Users/USERNAME/"
 harry_dir = user_dir + "/Corpora/HarryPotter/"
 alice_dir = user_dir + "/Corpora/alice_data/"
