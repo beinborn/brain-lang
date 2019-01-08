@@ -13,10 +13,11 @@ import numpy as np
 # and then use a reader for data with similar structure as basis.
 
 # The read_all method returns a dictionary.
-# The keys are the ids of the experimental blocks.
-# The value for each block is a list of scan events occurring in this block.
-# The scan events can be filtered by subject, block, timestamp etc.
+# The keys are the ids of the subjects.
+# The value for each  subject is a list of experimental blocks.
+# Each block contains a list of scan events.
 # Each event contains:
+#   A timestamp (when the scan was taken)
 #   A vector of voxel activations for that particular time stamp
 #   The stimulus presented at the time stamp. Stimulus = Words presented between current and previous scan.
 
