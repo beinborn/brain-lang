@@ -4,11 +4,9 @@ import pickle
 import os
 import logging
 import tensorflow as tf
-import bert
-import bert.modeling
-import bert.tokenization
-import bert.extract_features_utils as extract_features
-import re
+import torch
+from pytorch_pretrained_bert import BertTokenizer, BertModel
+
 
 # This class retrieves embeddings from the Elmo model by Peters et al (2018).
 # See https://allennlp.org/elmo for details.
@@ -34,7 +32,6 @@ class ElmoEncoder(TextEncoder):
         self.embedder = None
         if not load_previous:
             self.embedder = ElmoEmbedder()
-
 
     # Takes a list of sentences and returns a list of embeddings
     def get_sentence_embeddings(self, name, sentences):
@@ -135,97 +132,192 @@ class ElmoEncoder(TextEncoder):
 
 
 class BertEncoder(TextEncoder):
-    def __init__(self, modeldir, layer_indexes):
-        self.vocab_file = modeldir + "/vocab.txt"
-        self.config_file = modeldir + "/bert_config.json"
-        self.init_checkpoint = modeldir + "/bert_model.ckpt"
+    def __init__(self, embedding_dir, model_name="bert-base-multilingual-cased"):
+        super(BertEncoder, self).__init__(embedding_dir)
+        self.model = model_name
 
-        self.layer_indexes = layer_indexes
+    # It does not make sense to get word embeddings without context from Bert
+    # because we do not know which language they would come from.
 
-        self.bert_config = bert.modeling.BertConfig.from_json_file(self.config_file)
+    def get_sentence_embeddings(self, name, sentences, layer=-2):
+        sentence_embeddings = []
+        # Load pre-trained model (weights) and set to evaluation mode (no more training)
+        tokenizer = BertTokenizer.from_pretrained(self.model)
+        bertmodel = BertModel.from_pretrained(self.model)
+        bertmodel.eval()
+        for sentence in sentences:
+            tokenized = tokenizer.tokenize(sentence)
+            print(tokenized)
+            # Convert token to vocabulary indices
+            indexed_tokens = tokenizer.convert_tokens_to_ids(tokenized)
+            print(indexed_tokens)
 
-        self.tokenizer = bert.tokenization.FullTokenizer(
-            vocab_file=self.vocab_file, do_lower_case=False)
+            # double-check if this is the way to go for a single sentence
+            segment_ids = [0 for token in tokenized]
+            print(segment_ids)
+            print(len(tokenized), len(indexed_tokens), len(segment_ids))
 
-        is_per_host = tf.contrib.tpu.InputPipelineConfig.PER_HOST_V2
-        self.run_config = tf.contrib.tpu.RunConfig(
-            master=None,
-            tpu_config=tf.contrib.tpu.TPUConfig(
-                num_shards=None,
-                per_host_input_for_training=is_per_host))
+            # Convert inputs to PyTorch tensors
+            tokens_tensor = torch.tensor([indexed_tokens])
+            segments_tensor = torch.tensor([segment_ids])
+            print(tokens_tensor.shape)
+            print(segments_tensor.shape)
+            # Predict hidden states features for each layer
+            encoded_layers, _ = bertmodel(tokens_tensor, segments_tensor)
 
-    # What is happening here?
-    def convert_example(self, input_sequences):
-        examples = []
-        unique_id = 0
-        for sequence in input_sequences:
-            # Tokenize
-            line = bert.tokenization.convert_to_unicode(sequence)
-            line = line.strip()
+            assert len(encoded_layers) == 12
+            print(len(sentence), len(encoded_layers[0][0]))
+            print(encoded_layers[0].shape)
+            # Which layer and which pooling function should we use for fixed sentence reperesentations?
+            # 1. Jacob Devlin on: https://github.com/google-research/bert/issues/71
+            # "If you want sentence representation that you don't want to train,
+            # your best bet would just to be to average all the final hidden layers of all of the tokens in the sentence
+            #  (or second-to-last hidden layers, i.e., -2, would be better)."
+            # 2. In the paper, they say that concatenating the top four layers for each token could also be a good representation.
+            # 3. In Bert as a service, they use the second to last layer and do mean pooling
+            sentence_embeddings.append(encoded_layers[-1])
+        return sentence_embeddings
 
-            # Two sequences, is that necessary for our task? I thought this was just for question-answering
-            text_a = None
-            text_b = None
-            m = re.match(r"^(.*) \|\|\| (.*)$", line)
-            if m is None:
-                text_a = line
-            else:
-                text_a = m.group(1)
-                text_b = m.group(2)
-            examples.append(
-                extract_features.InputExample(unique_id=unique_id, text_a=text_a, text_b=text_b))
-            unique_id += 1
+    def get_story_embeddings(self, name, stories, mode="mean"):
+        embedding_file = self.embedding_dir + name + "story_embeddings.pickle"
+        # Careful, if the file exists, I load it. Make sure to delete it, if you want to reencode.
+        if os.path.isfile(embedding_file):
+            logging.info("Loading embeddings from " + embedding_file)
+            with open(embedding_file, 'rb') as handle:
+                story_embeddings = pickle.load(handle)
+        else:
+            story_embeddings = []
+            i = 0
+            for story in stories:
+                sentence_embeddings = self.get_sentence_embeddings(name + "_" + str(i), story)
+                story_embedding = []
+                for embedding in sentence_embeddings:
+                    if mode == "sentence_final":
+                        story_embedding.append(embedding[-1])
+                    if mode == "mean":
+                        story_embedding.append(np.mean(embedding, axis=0))
+                story_embeddings.append(np.mean(story_embedding, axis=0))
+                i += 1
 
-        return examples
+            # Save embeddings
+            os.makedirs(os.path.dirname(embedding_file), exist_ok=True)
+            with open(embedding_file, 'wb') as handle:
+                pickle.dump(story_embeddings, handle)
 
-    def get_embeddings_values(self, text_sequences, sequences_length, key=None):
-        examples = self.convert_example(text_sequences)
+        return story_embeddings
 
-        features = extract_features.convert_examples_to_features(
-            examples=examples, seq_length=256, tokenizer=self.tokenizer)
-
-        unique_id_to_feature = {}
-        for feature in features:
-            unique_id_to_feature[feature.unique_id] = feature
-
-        model_fn = extract_features.model_fn_builder(
-            bert_config=self.bert_config,
-            init_checkpoint=self.init_checkpoint,
-            layer_indexes=self.layer_indexes,
-            use_tpu=False,
-            use_one_hot_embeddings=False)
-
-        # If TPU is not available, this will fall back to normal Estimator on CPU
-        # or GPU.
-        estimator = tf.contrib.tpu.TPUEstimator(
-            use_tpu=False,
-            model_fn=model_fn,
-            config=self.run_config,
-            predict_batch_size=32)
-
-        input_fn = extract_features.input_fn_builder(
-            features=features, seq_length=256)
-
-        output_embeddings = []
-        for result in estimator.predict(input_fn, yield_single_examples=True):
-            unique_id = int(result["unique_id"])
-            feature = unique_id_to_feature[unique_id]
-
-            all_features = []
-            for (i, token) in enumerate(feature.tokens):
-                all_layers = []
-                for (j, layer_index) in enumerate(self.layer_indexes):
-                    layer_output = result["layer_output_%d" % j]
-                    layers = collections.OrderedDict()
-                    layers["index"] = layer_index
-                    layers["values"] = [
-                        round(float(x), 6) for x in layer_output[i:(i + 1)].flat
-                    ]
-
-                    all_layers.append(layers)
-                features = collections.OrderedDict()
-                features["token"] = token
-                features["layers"] = all_layers
-                all_features.append(features)
-            output_embeddings.append(all_features)
-        return output_embeddings
+#
+# class BertEncoder(TextEncoder):
+#     def __init__(self, modeldir, layer_indexes):
+#         self.vocab_file = modeldir + "/vocab.txt"
+#         self.config_file = modeldir + "/bert_config.json"
+#         self.init_checkpoint = modeldir + "/bert_model.ckpt"
+#
+#         self.layer_indexes = layer_indexes
+#
+#         self.bert_config = bert.modeling.BertConfig.from_json_file(self.config_file)
+#
+#         self.tokenizer = bert.tokenization.FullTokenizer(
+#             vocab_file=self.vocab_file, do_lower_case=False)
+#
+#         is_per_host = tf.contrib.tpu.InputPipelineConfig.PER_HOST_V2
+#         self.run_config = tf.contrib.tpu.RunConfig(
+#             master=None,
+#             tpu_config=tf.contrib.tpu.TPUConfig(
+#                 num_shards=None,
+#                 per_host_input_for_training=is_per_host))
+#
+#     # What is happening here?
+#     def convert_example(self, input_sequences):
+#         examples = []
+#         unique_id = 0
+#         for sequence in input_sequences:
+#             # Tokenize
+#             line = bert.tokenization.convert_to_unicode(sequence)
+#             line = line.strip()
+#
+#             # TODO: double-check what extract_features is doing
+#             examples.append(
+#                 extract_features.InputExample(unique_id=unique_id, text_a=line, text_b=None))
+#             unique_id += 1
+#             # Two sequences, is that necessary for our task? I thought this was just for question-answering
+#             # text_a = line
+#             # text_b = None
+#             # # Matching ||| what for?
+#             # m = re.match(r"^(.*) \|\|\| (.*)$", line)
+#             # if m is None:
+#             #     text_a = line
+#             # else:
+#             #     text_a = m.group(1)
+#             #     text_b = m.group(2)
+#
+#
+#         return examples
+#
+#     # TODO: can this be simplified?
+#     def get_embeddings_values(self, text_sequences):
+#         examples = self.convert_example(text_sequences)
+#
+#         features = extract_features.convert_examples_to_features(
+#             examples=examples, seq_length=256, tokenizer=self.tokenizer)
+#
+#         unique_id_to_feature = {}
+#         for feature in features:
+#             unique_id_to_feature[feature.unique_id] = feature
+#
+#         model_fn = extract_features.model_fn_builder(
+#             bert_config=self.bert_config,
+#             init_checkpoint=self.init_checkpoint,
+#             layer_indexes=self.layer_indexes,
+#             use_tpu=False,
+#             use_one_hot_embeddings=False)
+#
+#         # If TPU is not available, this will fall back to normal Estimator on CPU
+#         # or GPU.
+#         estimator = tf.contrib.tpu.TPUEstimator(
+#             use_tpu=False,
+#             model_fn=model_fn,
+#             config=self.run_config,
+#             predict_batch_size=32)
+#
+#         input_fn = extract_features.input_fn_builder(
+#             features=features, seq_length=256)
+#
+#         output_embeddings = []
+#         for result in estimator.predict(input_fn, yield_single_examples=True):
+#             unique_id = int(result["unique_id"])
+#             feature = unique_id_to_feature[unique_id]
+#
+#             all_features = []
+#             for (i, token) in enumerate(feature.tokens):
+#                 print(i)
+#                 print("Token: " + token)
+#                 all_layers = []
+#                 for (j, layer_index) in enumerate(self.layer_indexes):
+#                     print(j, layer_index)
+#                     layer_output = result["layer_output_%d" % j]
+#                     layers = collections.OrderedDict()
+#                     layers["index"] = layer_index
+#                     layers["values"] = [
+#                         round(float(x), 6) for x in layer_output[i:(i + 1)].flat
+#                     ]
+#
+#                     all_layers.append(layers)
+#                 features = collections.OrderedDict()
+#                 features["token"] = token
+#                 features["layers"] = all_layers
+#                 print(str(features))
+#                 all_features.append(features)
+#                 print(len(all_features))
+#             output_embeddings.append(all_features)
+#         return output_embeddings
+#
+# if __name__ == '__main__':
+#     layer_ids = [0,1,2,3,4,5,6,7,8,9,10,11]
+#     modeldir = "/Users/lisa/tools/Bert/multi_cased_L-12_H-768_A-12"
+#     bert_encoder = BertEncoder(modeldir, layer_ids)
+#     output_embeddings = bert_encoder.get_embeddings_values(['this is a  grubby cat'])
+if __name__ == '__main__':
+    bert_encoder = BertEncoder("/Users/lisa/Experiments/multilingual")
+    sentences = [ "All right.", "Lasst uns froh und munter sein. ", "Mais pourquoi?", "Por que no te callas"]
+    bert_encoder.get_sentence_embeddings("test", sentences)

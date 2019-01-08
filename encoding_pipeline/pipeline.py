@@ -1,14 +1,9 @@
 """Pipeline for predicting brain activations.
 """
 
-from evaluation.metrics import *
 
 from voxel_preprocessing.select_voxels import *
-from read_dataset.read_words_data import WordsReader
 import numpy as np
-from datetime import datetime
-import pickle
-import os
 import logging
 import random
 
