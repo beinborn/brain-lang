@@ -37,3 +37,4 @@ If you want to better understand the data structure, have a look at test_readers
 * Allennlp (for Elmo)
 * Spacy for tokenization: python -m spacy download en_core_web_lg
 * Pandas, matplotlib, seaborn and nilearn in case you want to plot the results. 
+
