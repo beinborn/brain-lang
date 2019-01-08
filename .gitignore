@@ -1,2 +1,8 @@
 harrydata_embeddings.pickle
 harrydata_subj1.pickle
+*.pyc
+*/*.pyc
+*/*/*.pyc
+*/.DS_Store
+.DS_Store
+.idea/workspace.xml
