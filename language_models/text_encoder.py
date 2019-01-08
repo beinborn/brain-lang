@@ -3,7 +3,12 @@ import numpy as np
 import pickle
 import os
 import logging
-
+import tensorflow as tf
+import bert
+import bert.modeling
+import bert.tokenization
+import bert.extract_features_utils as extract_features
+import re
 
 # This class retrieves embeddings from the Elmo model by Peters et al (2018).
 # See https://allennlp.org/elmo for details.
@@ -127,3 +132,100 @@ class ElmoEncoder(TextEncoder):
                 pickle.dump(story_embeddings, handle)
 
         return story_embeddings
+
+
+class BertEncoder(TextEncoder):
+    def __init__(self, modeldir, layer_indexes):
+        self.vocab_file = modeldir + "/vocab.txt"
+        self.config_file = modeldir + "/bert_config.json"
+        self.init_checkpoint = modeldir + "/bert_model.ckpt"
+
+        self.layer_indexes = layer_indexes
+
+        self.bert_config = bert.modeling.BertConfig.from_json_file(self.config_file)
+
+        self.tokenizer = bert.tokenization.FullTokenizer(
+            vocab_file=self.vocab_file, do_lower_case=False)
+
+        is_per_host = tf.contrib.tpu.InputPipelineConfig.PER_HOST_V2
+        self.run_config = tf.contrib.tpu.RunConfig(
+            master=None,
+            tpu_config=tf.contrib.tpu.TPUConfig(
+                num_shards=None,
+                per_host_input_for_training=is_per_host))
+
+    # What is happening here?
+    def convert_example(self, input_sequences):
+        examples = []
+        unique_id = 0
+        for sequence in input_sequences:
+            # Tokenize
+            line = bert.tokenization.convert_to_unicode(sequence)
+            line = line.strip()
+
+            # Two sequences, is that necessary for our task? I thought this was just for question-answering
+            text_a = None
+            text_b = None
+            m = re.match(r"^(.*) \|\|\| (.*)$", line)
+            if m is None:
+                text_a = line
+            else:
+                text_a = m.group(1)
+                text_b = m.group(2)
+            examples.append(
+                extract_features.InputExample(unique_id=unique_id, text_a=text_a, text_b=text_b))
+            unique_id += 1
+
+        return examples
+
+    def get_embeddings_values(self, text_sequences, sequences_length, key=None):
+        examples = self.convert_example(text_sequences)
+
+        features = extract_features.convert_examples_to_features(
+            examples=examples, seq_length=256, tokenizer=self.tokenizer)
+
+        unique_id_to_feature = {}
+        for feature in features:
+            unique_id_to_feature[feature.unique_id] = feature
+
+        model_fn = extract_features.model_fn_builder(
+            bert_config=self.bert_config,
+            init_checkpoint=self.init_checkpoint,
+            layer_indexes=self.layer_indexes,
+            use_tpu=False,
+            use_one_hot_embeddings=False)
+
+        # If TPU is not available, this will fall back to normal Estimator on CPU
+        # or GPU.
+        estimator = tf.contrib.tpu.TPUEstimator(
+            use_tpu=False,
+            model_fn=model_fn,
+            config=self.run_config,
+            predict_batch_size=32)
+
+        input_fn = extract_features.input_fn_builder(
+            features=features, seq_length=256)
+
+        output_embeddings = []
+        for result in estimator.predict(input_fn, yield_single_examples=True):
+            unique_id = int(result["unique_id"])
+            feature = unique_id_to_feature[unique_id]
+
+            all_features = []
+            for (i, token) in enumerate(feature.tokens):
+                all_layers = []
+                for (j, layer_index) in enumerate(self.layer_indexes):
+                    layer_output = result["layer_output_%d" % j]
+                    layers = collections.OrderedDict()
+                    layers["index"] = layer_index
+                    layers["values"] = [
+                        round(float(x), 6) for x in layer_output[i:(i + 1)].flat
+                    ]
+
+                    all_layers.append(layers)
+                features = collections.OrderedDict()
+                features["token"] = token
+                features["layers"] = all_layers
+                all_features.append(features)
+            output_embeddings.append(all_features)
+        return output_embeddings
