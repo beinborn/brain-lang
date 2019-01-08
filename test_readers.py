@@ -12,7 +12,9 @@ import numpy as np
 # we recommend to first look at the structure of the data in Matlab
 # and then use a reader for data with similar structure as basis.
 
-# The read_all method returns a list of scan events.
+# The read_all method returns a dictionary.
+# The keys are the ids of the experimental blocks.
+# The value for each block is a list of scan events occurring in this block.
 # The scan events can be filtered by subject, block, timestamp etc.
 # Each event contains:
 #   A vector of voxel activations for that particular time stamp

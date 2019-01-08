@@ -91,10 +91,10 @@ class HarryPotterReader(FmriReader):
         # Iterate through scans
         scans = datafile["data"]
 
-        for i in range(scan_index_start, scan_index_end + 1):
-            token_pointers = []
-            words = [word for (timestamp, word) in timed_words if
-                     (timestamp < scan_times[i] and timestamp >= scan_times[i - 1])]
+        # for i in range(scan_index_start, scan_index_end + 1):
+        #     token_pointers = []
+        #     words = [word for (timestamp, word) in timed_words if
+        #              (timestamp < scan_times[i] and timestamp >= scan_times[i - 1])]
 
         for i in range(scan_index_start, scan_index_end + 1):
 
