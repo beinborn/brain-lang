@@ -1,12 +1,12 @@
 # Encoding fMRI Data
 This repository contains code for evaluating language--brain encoding experiments. The experiments are described in our paper:
-   * Lisa Beinborn, Samira Abnar, Rochelle Choenni (2019): [Robust evaluation of language--brain encoding experiments](TODO: add arxiv link)
+   * Lisa Beinborn, Samira Abnar, Rochelle Choenni (2019): [Robust evaluation of language-brain encoding experiments](TODO: add arxiv link when available)
 # Reader
 We provide readers for four datasets:
 * The [Words Data](http://www.cs.cmu.edu/~fmri/science2008/data.html) by Mitchell et al. (2008)
 * The [Alice Data](https://sites.lsa.umich.edu/cnllab/2016/06/11/data-sharing-fmri-timecourses-story-listening/) by Brennan et al. (2016) 
 * The  [Harry Potter Data](https://drive.google.com/file/d/0By_8Ci8eoDI4Q3NwUEFPRExIeG8/view) by Wehbe et al. (2018)
-* The [Stories Data] by Dehghani et al. (2017)
+* The Stories Data by Dehghani et al. (2017). The data has not yet been published by the authors. Please contact them directly. 
 
 # Experiments
 For a simple start, look at simple_example_pipeline.py. 
@@ -26,16 +26,13 @@ We provide a class to add a language model and implementations for querying an E
 # Mapping Model
 * The mapping model is standard ridge regression.
 
-
 # Evaluation
 We provide code for three common evaluation procedures:
 * pairwise evaluation
 * voxel-wise evaluation
 * representational similarity analysis 
 
-
-
-## Requirements:
+# Requirements:
 * Numpy
 * Sklearn
 * Allennlp (for Elmo)
