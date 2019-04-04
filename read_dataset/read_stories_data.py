@@ -5,7 +5,6 @@ from .scan_elements import Block, ScanEvent
 from .read_fmri_data_abstract import FmriReader
 import spacy
 
-
 # This method reads the data that I received from Jonas Kaplan.
 # It is described in Dehghani et al. (2017)
 # Paper: https://onlinelibrary.wiley.com/doi/epdf/10.1002/hbm.23814
@@ -26,6 +25,7 @@ class StoryDataReader(FmriReader):
 
         self.language = kwargs.get("language", "english")
         datafile = self.data_dir + "30_" + self.language + "_storydata_masked.hd5"
+
 
         # Read stimuli and data
         data = h5py.File(datafile, 'r')
@@ -64,26 +64,26 @@ class StoryDataReader(FmriReader):
 
         for subject in subject_ids:
             # We exclude subject 29 because the voxel activations are all 0.
-            if self.language == "english" and subject == 29:
+            if self.language =="english" and subject ==29:
                 pass
             else:
                 blocks_for_subject = []
                 for block_index in range(0, datamatrix.shape[1]):
                     stimulus_pointer = []
-                    for sentence_id in range(0, len(stories[block_index])):
-                        for word_id in range(0, len(stories[block_index][sentence_id])):
-                            stimulus_pointer.append((sentence_id, word_id))
+                    for sentence_id in range(0,len(stories[block_index])):
+                        for word_id in range(0,len(stories[block_index][sentence_id])):
+                            stimulus_pointer.append((sentence_id,word_id))
 
                     # For this dataset, the brain activation has already been averaged over the whole story which consists of several sentences.
-                    # Each story is preceded by a context primer.
                     # I do not yet have a strong opinion on whether it makes sense to include the context primer to the stimulus.
 
-                    event = ScanEvent(str(subject), stimulus_pointer, block_index, datamatrix[subject][block_index])
-                    block = Block(str(subject), block_index, stories[block_index], [event])
+                    event = ScanEvent( str(subject),  stimulus_pointer, block_index, datamatrix[subject][block_index])
+                    block = Block(str(subject), block_index, stories[block_index],[event])
                     block.scan_events = [event]
                     blocks_for_subject.append(block)
                 blocks[subject] = blocks_for_subject
         return blocks
+
 
     def segment_sentences(self, story, model):
         processed = model(story)

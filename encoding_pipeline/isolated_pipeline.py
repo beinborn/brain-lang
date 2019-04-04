@@ -29,10 +29,11 @@ class SingleInstancePipeline(Pipeline):
         self.voxel_preprocessings = []
         self.voxel_selection = "on_train_ev"
         self.roi = []
+        self.subject_ids = None
         self.voxel_to_region_mappings = {}
 
-    # Run standard cross validation over all subjects
-    def run_standard_crossvalidation(self, experiment_name):
+    # Run standard cross validation over all subjects and output voxelwise results
+    def run_voxelwiseevaluation_cv(self, experiment_name):
         # Reading data
         self.prepare_data()
 
@@ -40,7 +41,7 @@ class SingleInstancePipeline(Pipeline):
         if self.subject_ids == None:
             self.subject_ids = self.data.keys()
         logging.info("Subjects: " + str(self.subject_ids))
-
+        print(self.data.keys())
         # Iterate over subjects
         for subject_id in self.subject_ids:
             logging.info("Start processing for SUBJECT: " + str(subject_id))
@@ -50,13 +51,15 @@ class SingleInstancePipeline(Pipeline):
     # Run the pair-wise evaluation procedure described in Mitchell et al. (2008)
     # Note: this can take long.
     def run_pairwise_procedure(self, experiment_name):
+
+
         # Reading data
         self.prepare_data()
 
-        # Iterate over subjects
         if self.subject_ids == None:
             self.subject_ids = self.data.keys()
         print("Subjects: " + str(self.subject_ids))
+        # Iterate over subjects
         for subject_id in self.subject_ids:
             print("Start processing for SUBJECT: " + str(subject_id))
             subject_data = self.data[subject_id]
@@ -148,7 +151,7 @@ class SingleInstancePipeline(Pipeline):
             # Get evaluation scores
             current_results = evaluate_fold(self.metrics, test_predictions, test_targets)
             print("Results for current fold: ")
-            print(str(current_results["R2"][1]))
+            print("R2: " + str(current_results["R2"][1]))
             collected_results = update_results(current_results, collected_results)
 
         # Write out results

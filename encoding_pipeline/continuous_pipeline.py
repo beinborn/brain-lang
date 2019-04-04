@@ -35,20 +35,23 @@ class ContinuousPipeline(Pipeline):
         # Options for voxel selection are: "on_train_r", "on_train_ev"random", "by_roi", "stable" and "none"
         self.voxel_selection = "none"
         self.roi = []
-
+        self.subject_ids = None
         self.voxel_to_region_mappings = {}
 
     # This method runs standard cross-validation over all subjects.
     # Both evaluation procedures (pairwise and voxelwise) are applied.
     def process(self, experiment_name):
 
+
         # Reading data
         self.prepare_data()
-        # Iterate over subjects
-        print("Subjects: " + str(self.data.keys()))
+
         if self.subject_ids == None:
             self.subject_ids = list(self.data.keys())
 
+        print("Subjects: " + str(self.data.keys()))
+
+        # Iterate over subjects
         for subject_id in self.subject_ids:
             print("Start processing for SUBJECT: " + str(subject_id))
             subject_data = self.data[subject_id]
@@ -210,6 +213,7 @@ class ContinuousPipeline(Pipeline):
 
     # If the data consists only of a single block, we need to find a way to split it into folds.
     # For the Alice data, we manually determined good break points which are hard-coded in the reader.
+    # This is not an ideal solution.
     def split_data(self, data):
         breakpoints = self.brain_data_reader.block_splits
         stimulus_number = 0
@@ -324,13 +328,10 @@ class ContinuousPipeline(Pipeline):
     # For other sentence embeddings, you would have to query the encoder with fragments instead or find another solution.
     def extract_stimulus_embeddings(self, sentence_embeddings, stimulus_pointers):
         stimulus_embeddings = []
-        print(np.asarray(sentence_embeddings).shape)
         for stimulus_pointer in stimulus_pointers:
             if len(stimulus_pointer) > 0:
                 token_embeddings = []
                 for (sentence_id, token_id) in stimulus_pointer:
-                    print(sentence_id, token_id)
-                    print(len(sentence_embeddings[sentence_id]))
                     token_embeddings.append(sentence_embeddings[sentence_id][token_id])
 
                 if len(token_embeddings) > 1:
@@ -341,7 +342,6 @@ class ContinuousPipeline(Pipeline):
             else:
                 # I am returning the empty embedding if we do not have a stimulus. There might be smarter ways.
                 stimulus_embeddings.append([])
-        print(np.asarray(stimulus_embeddings).shape)
         return stimulus_embeddings
 
 
@@ -366,8 +366,6 @@ class ContinuousPipeline(Pipeline):
             all_predictive_voxels = []
 
             for key,value in self.data[subject_id].items():
-                print("In here!")
-
                 scans = value[0]
                 embeddings = value[1]
 

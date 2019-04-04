@@ -12,12 +12,9 @@ import numpy as np
 # we recommend to first look at the structure of the data in Matlab
 # and then use a reader for data with similar structure as basis.
 
-# The read_all method returns a dictionary.
-# The keys are the ids of the subjects.
-# The value for each  subject is a list of experimental blocks.
-# Each block contains a list of scan events.
+# The read_all method returns a list of scan events.
+# The scan events can be filtered by subject, block, timestamp etc.
 # Each event contains:
-#   A timestamp (when the scan was taken)
 #   A vector of voxel activations for that particular time stamp
 #   The stimulus presented at the time stamp. Stimulus = Words presented between current and previous scan.
 
@@ -27,7 +24,7 @@ import numpy as np
 # In the Mitchell dataset, one block consists just of a single word.
 
 # SET THE DATA DIR: 
-data_dir = "/Users/lisa/Corpora/"
+data_dir = "USERDIR/"
 
 
 # ---- Mitchell DATA -----
@@ -155,17 +152,3 @@ print("Example stimuli 0-20 = Lists of (sentence_id, token_id): \n" + str(stimul
 # chinese_story_data = readKaplanData.read_all(data_dir + "Kaplan_data", "chinese")
 
 
-# ---- NBD DATA (Dutch) ----
-# Get the data at: https://osf.io/utpdy/
-# The NBD data is very big, start with a subset.
-# # Make sure to change the dir:
-# nbd_dir = data_dir + "NBD/"
-# print("\n\nDutch Narrative Data")
-# nbd_reader = NBDReader(data_dir=nbd_dir)
-# nbd_data = nbd_reader.read_all_events()
-# print("Number of scans: " + str(len(nbd_data)))
-# print("Subjects: " + str({event.subject_id for event in nbd_data}))
-# print("Runs: " + str({event.block for event in nbd_data}))
-# print("Examples: ")
-# for i in range(0, 10):
-#     print(vars(nbd_data[i]))

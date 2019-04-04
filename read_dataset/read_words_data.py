@@ -115,5 +115,5 @@ class WordsReader(FmriReader):
         elif key2 in self.stable_voxels.keys():
             return self.stable_voxels[key2]
         else:
-            raise ValueError("Stable voxels are not available for pair: " + key1+ ", " + key2)
+            raise ValueError("Stable voxels are not available for pair: " + key1)
 

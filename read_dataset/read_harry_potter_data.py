@@ -32,14 +32,11 @@ class HarryPotterReader(FmriReader):
             subject_ids = np.arange(1, 9)
 
         for subject_id in subject_ids:
-            print(subject_id)
             blocks_for_subject = []
             for block_id in (range(1, 5)):
-                print("Block: " + str(block_id))
                 logging.info("Reading block: " + str(block_id))
                 block = self.read_block(subject_id, block_id)
                 block.voxel_to_region_mapping = self.get_voxel_to_region_mapping(subject_id)
-                print(subject_id, block_id, len(block.sentences))
                 blocks_for_subject.append(block)
             blocks[subject_id] = blocks_for_subject
 
@@ -91,13 +88,8 @@ class HarryPotterReader(FmriReader):
         # Iterate through scans
         scans = datafile["data"]
 
-        # for i in range(scan_index_start, scan_index_end + 1):
-        #     token_pointers = []
-        #     words = [word for (timestamp, word) in timed_words if
-        #              (timestamp < scan_times[i] and timestamp >= scan_times[i - 1])]
 
         for i in range(scan_index_start, scan_index_end + 1):
-
             token_pointers = []
             words = [word for (timestamp, word) in timed_words if
                      (timestamp < scan_times[i] and timestamp >= scan_times[i - 1])]
