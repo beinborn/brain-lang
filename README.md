@@ -8,6 +8,18 @@ We provide readers for four datasets:
 * The  [Harry Potter Data](https://drive.google.com/file/d/0By_8Ci8eoDI4Q3NwUEFPRExIeG8/view) by Wehbe et al. (2018)
 * The [Stories Data] by Dehghani et al. (2017)
 
+# Experiments
+For a simple start, look at simple_example_pipeline.py. 
+
+In the paper, we report results from two experimental pipelines, one for isolated stimuli (e.g., single words) and one for continuous stimuli (e.g., a book chapter).  
+You can run them as follows: 
+* python3 continuous_stimuli_experiments.py
+* python3 isolated_stimuli_experiments.py
+
+This will re-run all experiments in the paper (which takes long!).
+
+You might want to first run the experiments only for a single subject. You should then set yourpipeline.subject_ids =[1] or to another subject id for which you have downloaded the data. If you want to better understand the fmri data structure, have a look at test_readers.py
+
 # Language Models
 We provide a class to add a language model and implementations for querying an Elmo model (Peters et al. (2018)) and a random language model .
 
@@ -21,17 +33,7 @@ We provide code for three common evaluation procedures:
 * voxel-wise evaluation
 * representational similarity analysis 
 
-# Experiments
-For a simple start, look at simple_example_pipeline.py. 
 
-In the paper, we report results from two experimental pipelines, one for isolated stimuli (e.g., single words) and one for continuous stimuli (e.g., a book chapter).  
-You can run them as follows: 
-* python3 continuous_stimuli_experiments.py
-* python3 isolated_stimuli_experiments.py
-
-This will re-run all experiments in the paper (which takes long!).
-
-You might want to first run the experiments only for a single subject. You should then set yourpipeline.subject_ids =[1] or to another subject id for which you have downloaded the data. If you want to better understand the fmri data structure, have a look at test_readers.py
 
 ## Requirements:
 * Numpy
