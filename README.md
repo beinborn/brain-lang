@@ -1,6 +1,6 @@
 # Encoding fMRI Data
 This repository contains code for evaluating language--brain encoding experiments. The experiments are described in our paper:
-   * Lisa Beinborn, Samira Abnar, Rochelle Choenni (2019): [Robust evaluation of language-brain encoding experiments](TODO: add arxiv link when available)
+   * Lisa Beinborn, Samira Abnar, Rochelle Choenni (2019): [Robust evaluation of language-brain encoding experiments](http://arxiv.org/abs/1904.02547)
 # Reader
 We provide readers for four datasets:
 * The [Words Data](http://www.cs.cmu.edu/~fmri/science2008/data.html) by Mitchell et al. (2008)
